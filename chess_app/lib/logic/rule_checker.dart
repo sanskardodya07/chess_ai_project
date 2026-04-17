@@ -1,12 +1,12 @@
 import '../models/board.dart';
 import '../models/move.dart';
-import 'move_generator.dart';
+import '../core/chess_engine.dart';
 
 bool isInCheck(Board board, String color) {
   var king = (color == "white") ? board.whiteKing : board.blackKing;
   String enemy = color == "white" ? "b" : "w";
 
-  for (var move in generateAllMoves(board)) {
+  for (var move in ChessEngine.generateAllMoves(board)) {
     if (move.pieceMoved[0] == enemy &&
         move.endRow == king.$1 &&
         move.endCol == king.$2) {

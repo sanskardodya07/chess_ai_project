@@ -1,6 +1,6 @@
 import '../models/board.dart';
 import '../models/move.dart';
-import '../logic/move_generator.dart';
+import '../core/chess_engine.dart';
 
 class GameController {
 
@@ -8,7 +8,7 @@ class GameController {
 
   List<Move> getLegalMoves(int row, int col) {
 
-    List<Move> allMoves = generateAllMoves(board);
+    List<Move> allMoves = ChessEngine.generateAllMoves(board);
 
     return allMoves.where((m) =>
       m.startRow == row && m.startCol == col
