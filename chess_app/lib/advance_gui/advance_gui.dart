@@ -76,7 +76,7 @@ class _AdvancedChessBoardState extends State<AdvancedChessBoard>
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: const Color.fromRGBO(0, 0, 0, 0.3),
                   blurRadius: 10,
                   offset: const Offset(0, 5),
                 ),
@@ -695,7 +695,7 @@ class _AdvancedGameScreenState extends State<AdvancedGameScreen>
                   borderRadius: BorderRadius.circular(4),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: const Color.fromRGBO(0, 0, 0, 0.2),
                       blurRadius: 2,
                       offset: const Offset(1, 1),
                     ),
