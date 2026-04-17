@@ -1,3 +1,5 @@
+#minimax.py
+
 from agent.knowledge.evaluation import evaluate
 from agent.reasoning.move_ordering import order_moves
 
@@ -59,23 +61,20 @@ def minimax(board, depth):
     moves = board.get_all_legal_moves()
     moves = order_moves(board, moves)
 
+    # ✅ NEW — both branches use make_move/undo_move consistently
     if board.turn == "white":
 
         best_score = float("-inf")
 
         for move in moves:
 
-            import copy
-
-            new_board = copy.deepcopy(board)
-            new_board.make_move(move)
-
-            score = minimax(new_board, depth - 1)
+            board.make_move(move)
+            score = minimax(board, depth - 1)
+            board.undo_move()
 
             best_score = max(best_score, score)
 
         return best_score
-
     else:
 
         best_score = float("inf")

@@ -1,3 +1,5 @@
+#rule_checker.py
+
 from board.move_generator import generate_all_moves
 from board.constants import WHITE, BLACK
 

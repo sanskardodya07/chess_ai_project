@@ -1,3 +1,5 @@
+# chessboard_widget.py
+
 import os
 from PyQt6.QtWidgets import QWidget, QGridLayout, QPushButton, QMessageBox, QApplication
 from PyQt6.QtGui import QIcon

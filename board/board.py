@@ -1,3 +1,5 @@
+#board.py
+
 from board.constants import *
 from board.move import Move
 from board.move_generator import generate_all_moves

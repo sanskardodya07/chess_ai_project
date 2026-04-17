@@ -1,3 +1,5 @@
+#constants.py
+
 BOARD_SIZE = 8
 
 WHITE = "white"
@@ -7,10 +9,10 @@ FILES = "abcdefgh"
 RANKS = "12345678"
 
 PIECE_VALUES = {
-    "P":1,
-    "N":3,
-    "B":3,
-    "R":5,
-    "Q":9,
-    "K":100
+    "P":100,
+    "N":300,
+    "B":300,
+    "R":500,
+    "Q":900,
+    "K":0
 }

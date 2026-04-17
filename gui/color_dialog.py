@@ -1,3 +1,5 @@
+#color_dialog.py
+
 from PyQt6.QtWidgets import QDialog, QPushButton, QVBoxLayout, QLabel
 
 

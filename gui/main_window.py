@@ -1,3 +1,5 @@
+#main_window.py
+
 from PyQt6.QtWidgets import QMainWindow
 
 from gui.chessboard_widget import ChessBoardWidget

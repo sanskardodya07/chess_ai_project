@@ -1,18 +1,7 @@
+#evaluation.py
+
 import math
-
-# ==============================
-# PIECE VALUES
-# ==============================
-
-PIECE_VALUES = {
-    "P": 100,
-    "N": 300,
-    "B": 300,
-    "R": 500,
-    "Q": 900,
-    "K": 0
-}
-
+from board.constants import PIECE_VALUES
 
 # ==============================
 # GAME PHASE

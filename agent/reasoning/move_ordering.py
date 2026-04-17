@@ -1,3 +1,5 @@
+#move_ordering.py
+
 from agent.knowledge.evaluation import evaluate
 from board.rule_checker import is_in_check
 from board.move_generator import generate_all_moves
@@ -63,22 +65,19 @@ def gives_check(board, move):
     return check
 
 
+# ✅ NEW — clean, no manual turn mutation
 def creates_threat(board, move):
-
-    # Save original turn
-    original_turn = board.turn
 
     board.make_move(move)
 
-    # After move, turn switched → revert temporarily
-    board.turn = original_turn
+    # after make_move, turn has switched to opponent
+    # we want to check what the MOVING side can do next turn
+    # so we generate moves for the side that just moved
+    moving_side = "white" if board.turn == "black" else "white"
 
-    next_moves = generate_all_moves(board, board.turn)
+    next_moves = generate_all_moves(board, moving_side)
 
     threat_found = any(m.piece_captured != "" for m in next_moves)
-
-    # Restore turn properly
-    board.turn = "black" if original_turn == "white" else "white"
 
     board.undo_move()
 
