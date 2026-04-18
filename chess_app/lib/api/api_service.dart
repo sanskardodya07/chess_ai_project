@@ -1,8 +1,12 @@
 import 'dart:convert';
-import 'dart:io';
+import 'package:http/http.dart' as http;
 
 import '../models/board.dart';
 import '../models/move.dart';
+
+// REST API URL (update with your Vercel deployment URL)
+// Example: https://your-project-name.vercel.app
+const String _serverUrl = 'https://api.vercel.com/v1/integrations/deploy/prj_8y6dm5NFhyU6MdWVv4zeiifN1CRO/4yeb9Ggafz';
 
 Map<String, dynamic> _moveToJson(Move move) {
   return {
@@ -99,16 +103,12 @@ Map<String, dynamic> json_builder(
   };
 }
 
-/// Sends the current board state to the backend AI server over WebSocket.
-///
-/// The [url] should be the full WebSocket endpoint, for example:
-/// `ws://example.onrender.com`.
+/// Sends the current board state to the backend AI server via REST API.
 ///
 /// Returns the decoded JSON response from the server.
 // ignore: non_constant_identifier_names
 Future<Map<String, dynamic>> ai_move(
-  Board board,
-  String url, {
+  Board board, {
   Move? humanMove,
   List<Move>? legalMoves,
 }) async {
@@ -118,22 +118,21 @@ Future<Map<String, dynamic>> ai_move(
     legalMoves: legalMoves,
   );
 
-  final socket = await WebSocket.connect(url);
-
   try {
-    socket.add(jsonEncode(payload));
+    final response = await http
+        .post(
+          Uri.parse('$_serverUrl/api/move'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(payload),
+        )
+        .timeout(const Duration(seconds: 30));
 
-    final dynamic rawResponse = await socket.first;
-    if (rawResponse is String) {
-      return jsonDecode(rawResponse) as Map<String, dynamic>;
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Server error: ${response.statusCode} - ${response.body}');
     }
-
-    if (rawResponse is List<int>) {
-      return jsonDecode(utf8.decode(rawResponse)) as Map<String, dynamic>;
-    }
-
-    throw FormatException('Unexpected WebSocket response payload type.');
-  } finally {
-    await socket.close();
+  } catch (e) {
+    throw Exception('Failed to get AI move: $e');
   }
 }

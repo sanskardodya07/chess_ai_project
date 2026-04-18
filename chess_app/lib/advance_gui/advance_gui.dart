@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/board.dart';
 import '../models/move.dart';
 import 'move_service.dart';
+import '../api/api_service.dart';
 
 /// Advanced Chess GUI with modern features
 /// Responsive design for mobile, tablet, and desktop
@@ -272,6 +273,11 @@ class _AdvancedGameScreenState extends State<AdvancedGameScreen>
   late AnimationController _statusAnimationController;
   late Animation<double> _statusAnimation;
 
+  String? userColor; // 'white' or 'black'
+  String? aiColor; // 'white' or 'black'
+  bool isAiThinking = false;
+  bool _hasShownColorDialog = false;
+
   @override
   void initState() {
     super.initState();
@@ -290,9 +296,114 @@ class _AdvancedGameScreenState extends State<AdvancedGameScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_hasShownColorDialog) {
+      _hasShownColorDialog = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showColorSelectionDialog();
+        }
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _statusAnimationController.dispose();
     super.dispose();
+  }
+
+  void _showColorSelectionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Choose Your Color'),
+          content: const Text('Select the color you want to play as:'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  userColor = 'white';
+                  aiColor = 'black';
+                });
+                Navigator.of(context).pop();
+              },
+              child: const Text('White'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  userColor = 'black';
+                  aiColor = 'white';
+                });
+                Navigator.of(context).pop();
+                // If AI plays first, start after dialog closes
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && aiColor == 'white') {
+                    _makeAiMove();
+                  }
+                });
+              },
+              child: const Text('Black'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _makeAiMove() async {
+    setState(() {
+      isAiThinking = true;
+    });
+
+    try {
+      final response = await ai_move(board, humanMove: lastMove);
+      final aiMoveData = response['ai_move'] as Map<String, dynamic>;
+
+      final aiMove = Move(
+        startRow: aiMoveData['start'][0] as int,
+        startCol: aiMoveData['start'][1] as int,
+        endRow: aiMoveData['end'][0] as int,
+        endCol: aiMoveData['end'][1] as int,
+        pieceMoved: board.board[aiMoveData['start'][0]][aiMoveData['start'][1]],
+        pieceCaptured: board.board[aiMoveData['end'][0]][aiMoveData['end'][1]],
+        promotion: aiMoveData['promotion'] as String?,
+        isCastle: aiMoveData['is_castle'] as bool? ?? false,
+        isEnPassant: aiMoveData['is_en_passant'] as bool? ?? false,
+      );
+
+      if (moveService.makeMove(aiMove)) {
+        lastMove = aiMove;
+        _addToMoveHistory(aiMove);
+        if (aiMove.pieceCaptured.isNotEmpty) {
+          capturedPieces.add(aiMove.pieceCaptured);
+          capturedPiecesPerMove.add(aiMove.pieceCaptured);
+        } else {
+          capturedPiecesPerMove.add("");
+        }
+
+        GameResult? result = moveService.getGameResult();
+        if (result != null) {
+          _showGameEndDialog(result);
+        }
+      }
+    } catch (e) {
+      // Handle AI error - perhaps show a snackbar
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('AI move failed: $e')),
+        );
+      }
+    } finally {
+      setState(() {
+        isAiThinking = false;
+      });
+      _updateGameState();
+    }
   }
 
   void _updateGameState() {
@@ -307,6 +418,10 @@ class _AdvancedGameScreenState extends State<AdvancedGameScreen>
   }
 
   void _onSquareTap(int row, int col) {
+    if (userColor == null || board.turn != userColor || isAiThinking) {
+      return; // Don't allow moves if colors not set, not user's turn, or AI is thinking
+    }
+
     setState(() {
       String piece = board.board[row][col];
 
@@ -353,6 +468,11 @@ class _AdvancedGameScreenState extends State<AdvancedGameScreen>
         GameResult? result = moveService.getGameResult();
         if (result != null) {
           _showGameEndDialog(result);
+        } else {
+          // After human move, check if AI should play
+          if (board.turn == aiColor) {
+            _makeAiMove();
+          }
         }
       }
 
@@ -384,7 +504,7 @@ class _AdvancedGameScreenState extends State<AdvancedGameScreen>
     notation += endFile + endRank;
 
     if (move.pieceCaptured.isNotEmpty) {
-      notation = "x" + notation;
+      notation = "x$notation";
     }
 
     return notation;
@@ -541,9 +661,14 @@ class _AdvancedGameScreenState extends State<AdvancedGameScreen>
   }
 
   Widget _buildGameStatus() {
-    String statusText = isKingInCheck
-        ? "${board.turn} is in check!"
-        : "${board.turn}'s turn";
+    String statusText;
+    if (isAiThinking) {
+      statusText = "AI is thinking...";
+    } else if (isKingInCheck) {
+      statusText = "${board.turn} is in check!";
+    } else {
+      statusText = "${board.turn}'s turn";
+    }
 
     return AnimatedBuilder(
       animation: _statusAnimation,
@@ -552,23 +677,45 @@ class _AdvancedGameScreenState extends State<AdvancedGameScreen>
           padding: const EdgeInsets.all(16),
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: isKingInCheck
-                ? const Color.fromRGBO(244, 67, 54, 0.2)
-                : const Color.fromRGBO(33, 150, 243, 0.2),
+            color: isAiThinking
+                ? const Color.fromRGBO(255, 193, 7, 0.2)
+                : isKingInCheck
+                    ? const Color.fromRGBO(244, 67, 54, 0.2)
+                    : const Color.fromRGBO(33, 150, 243, 0.2),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isKingInCheck ? Colors.red : Colors.blue,
+              color: isAiThinking
+                  ? Colors.orange
+                  : isKingInCheck ? Colors.red : Colors.blue,
               width: 2,
             ),
           ),
-          child: Text(
-            statusText,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isKingInCheck ? Colors.red : Colors.blue,
-            ),
-            textAlign: TextAlign.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (isAiThinking) ...[
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                statusText,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isAiThinking
+                      ? Colors.orange
+                      : isKingInCheck ? Colors.red : Colors.blue,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         );
       },

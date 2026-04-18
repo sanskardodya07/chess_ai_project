@@ -1,0 +1,18 @@
+{
+  "buildCommand": "pip install -r requirements.txt",
+  "functions": {
+    "api/move.py": {
+      "runtime": "python3.11"
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/move",
+      "dest": "/api/move.py"
+    },
+    {
+      "src": "/",
+      "dest": "/api/move.py"
+    }
+  ]
+}
