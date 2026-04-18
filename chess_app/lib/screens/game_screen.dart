@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../widgets/chess_board.dart';
 import '../models/board.dart';
 import '../logic/move_generator.dart';
-import '../logic/rule_checker.dart';
+// import '../logic/rule_checker.dart';
 import '../models/move.dart';
 import '../logic/game_state_checker.dart';
 import '../logic/game_state.dart';
@@ -125,7 +125,6 @@ class _GameScreenState extends State<GameScreen> {
         selectedCol = col;
 
         List<Move> moves = generateLegalMoves(board);
-        moves = filterLegalMoves(board, moves);
 
         currentLegalMoves = moves
             .where((m) => m.startRow == row && m.startCol == col)
@@ -141,17 +140,22 @@ class _GameScreenState extends State<GameScreen> {
         }
 
         if (chosen != null) {
-          board.makeMove(chosen);
-          var state = evaluateGameState(board);
-          _handleGameState(state);
-
-          setState(() {});
-          _maybeTriggerAI();
+          setState(() {
+            board.makeMove(chosen!);
+            var state = evaluateGameState(board);
+            _handleGameState(state);
+            selectedRow = null;
+            selectedCol = null;
+            currentLegalMoves = [];
+          });
+          _maybeTriggerAI(); // ✅ called AFTER setState, not inside it
+        } else {
+          setState(() {
+            selectedRow = null;
+            selectedCol = null;
+            currentLegalMoves = [];
+          });
         }
-
-        selectedRow = null;
-        selectedCol = null;
-        currentLegalMoves = [];
       }
     });
   }
