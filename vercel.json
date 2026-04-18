@@ -2,16 +2,12 @@
   "version": 2,
   "functions": {
     "api/move.py": {
-      "runtime": "python3.9"
+      "runtime": "@vercel/python"
     }
   },
   "routes": [
     {
       "src": "/api/move",
-      "dest": "/api/move.py"
-    },
-    {
-      "src": "/(.*)",
       "dest": "/api/move.py"
     }
   ]
