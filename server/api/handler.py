@@ -7,10 +7,9 @@ def handler(request):
     try:
         data = request.get_json()
 
-        board_data = data["board"]
+        board = board_from_json(data["board"])
         depth = data.get("depth", 3)
 
-        board = board_from_json(board_data)
         move = get_best_move(board, depth)
 
         return {
