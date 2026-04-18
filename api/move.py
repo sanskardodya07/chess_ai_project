@@ -10,23 +10,18 @@ if ROOT_DIR not in sys.path:
 from server.board_builder import build_board_from_json
 from agent.reasoning.alpha_beta import get_best_move
 
-def _parse_request_json(request):
-    if hasattr(request, "json"):
-        json_attr = request.json
-        if callable(json_attr):
-            return json_attr()
-        return json_attr
-    if hasattr(request, "body"):
-        body = request.body
-        if isinstance(body, (bytes, bytearray)):
-            body = body.decode("utf-8")
-        return json.loads(body)
-    raise ValueError("Unable to parse JSON from request")
+
+def _json_body(request):
+    body = getattr(request, "body", None)
+    if body is None:
+        raise ValueError("Missing request body")
+    if isinstance(body, (bytes, bytearray)):
+        body = body.decode("utf-8")
+    return json.loads(body)
+
 
 def handler(request):
     """Vercel serverless function handler for AI move calculation."""
-    
-    # Handle CORS preflight
     if request.method == "OPTIONS":
         return {
             "statusCode": 200,
@@ -36,12 +31,16 @@ def handler(request):
                 "Access-Control-Allow-Headers": "Content-Type",
             },
         }
-    
+
     if request.method != "POST":
-        return {"statusCode": 405, "body": json.dumps({"error": "Method not allowed"})}
-    
+        return {
+            "statusCode": 405,
+            "headers": {"Access-Control-Allow-Origin": "*"},
+            "body": json.dumps({"error": "Method not allowed"})
+        }
+
     try:
-        payload = _parse_request_json(request)
+        payload = _json_body(request)
         board = build_board_from_json(payload)
         ai_move = get_best_move(board, depth=3)
 
@@ -49,10 +48,7 @@ def handler(request):
             return {
                 "statusCode": 200,
                 "headers": {"Access-Control-Allow-Origin": "*"},
-                "body": json.dumps({
-                    "status": "no_move",
-                    "ai_move": None
-                })
+                "body": json.dumps({"status": "no_move", "ai_move": None})
             }
 
         return {
