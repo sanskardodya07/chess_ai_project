@@ -8,7 +8,7 @@
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
+      "src": "server/api/(.*)",
       "dest": "server/app.py"
     }
   ]
