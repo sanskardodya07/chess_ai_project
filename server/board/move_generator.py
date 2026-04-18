@@ -1,6 +1,6 @@
 #move_generator.py
 
-from board.move import Move
+from server.board.move import Move
 
 
 def generate_all_moves(board, color):
@@ -175,7 +175,7 @@ def king_moves(board, r, c, moves):
                 moves.append(Move((r,c),(row,col),piece,target))
 
     # ✅ CASTLING — all 3 rules enforced
-    from board.rule_checker import is_in_check
+    from server.board.rule_checker import is_in_check
 
     # Rule 1 — cannot castle while in check
     if is_in_check(board, color):

@@ -1,7 +1,7 @@
 #minimax.py
 
-from agent.knowledge.evaluation import evaluate
-from agent.reasoning.move_ordering import order_moves
+from server.agent.knowledge.evaluation import evaluate
+from server.agent.reasoning.move_ordering import order_moves
 
 
 # ==============================

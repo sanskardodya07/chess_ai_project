@@ -276,4 +276,30 @@ class Board {
 
     return key;
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      "board": board,
+      "turn": turn,
+
+      "whiteKing": [whiteKing.$1, whiteKing.$2],
+      "blackKing": [blackKing.$1, blackKing.$2],
+
+      // ✅ reconstruct castling rights (Python-compatible)
+      "castlingRights": {
+        "wK": !whiteKingMoved && !whiteRookHMoved,
+        "wQ": !whiteKingMoved && !whiteRookAMoved,
+        "bK": !blackKingMoved && !blackRookHMoved,
+        "bQ": !blackKingMoved && !blackRookAMoved,
+      },
+
+      // ✅ correct field name
+      "enPassantTarget": enPassantSquare == null
+          ? null
+          : [enPassantSquare!.$1, enPassantSquare!.$2],
+
+      // optional but VERY useful for AI
+      "halfMoveClock": halfMoveClock,
+    };
+  }
 }

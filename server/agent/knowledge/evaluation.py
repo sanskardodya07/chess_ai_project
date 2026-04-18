@@ -1,7 +1,7 @@
 #evaluation.py
 
 import math
-from board.constants import PIECE_VALUES
+from server.board.constants import PIECE_VALUES
 
 # ==============================
 # GAME PHASE

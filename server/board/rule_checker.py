@@ -1,7 +1,7 @@
 #rule_checker.py
 
-from board.move_generator import generate_all_moves
-from board.constants import WHITE, BLACK
+from server.board.move_generator import generate_all_moves
+from server.board.constants import WHITE, BLACK
 
 
 # ===============================

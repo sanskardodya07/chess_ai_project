@@ -1,9 +1,9 @@
 #board.py
 
-from board.constants import *
-from board.move import Move
-from board.move_generator import generate_all_moves
-from board.rule_checker import filter_legal_moves, is_in_check
+from server.board.constants import *
+from server.board.move import Move
+from server.board.move_generator import generate_all_moves
+from server.board.rule_checker import filter_legal_moves, is_in_check
 
 
 class Board:

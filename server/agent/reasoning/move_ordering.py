@@ -1,8 +1,8 @@
 #move_ordering.py
 
-from agent.knowledge.evaluation import evaluate
-from board.rule_checker import is_in_check
-from board.move_generator import generate_all_moves
+from server.agent.knowledge.evaluation import evaluate
+from server.board.rule_checker import is_in_check
+from server.board.move_generator import generate_all_moves
 
 
 # ==============================
