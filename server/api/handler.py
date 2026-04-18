@@ -1,7 +1,7 @@
+import json
 from api.deserializer import board_from_json
 from api.serializer import move_to_json
 from agent.reasoning.alpha_beta import get_best_move
-import json
 
 def handler(request):
     try:
