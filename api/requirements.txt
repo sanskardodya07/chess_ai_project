@@ -1,0 +1,2 @@
+# Requirements for Vercel Python serverless function
+# Only standard library modules are used, but Vercel needs this file

@@ -1,11 +1,17 @@
 {
+  "version": 2,
+  "functions": {
+    "api/move.py": {
+      "runtime": "python3.9"
+    }
+  },
   "routes": [
     {
       "src": "/api/move",
       "dest": "/api/move.py"
     },
     {
-      "src": "/",
+      "src": "/(.*)",
       "dest": "/api/move.py"
     }
   ]
