@@ -5,22 +5,14 @@ from agent.reasoning.alpha_beta import get_best_move
 
 app = FastAPI()
 
-
 @app.post("/api/move")
 async def get_move(request: dict):
-    try:
-        board_data = request["board"]
-        depth = request.get("depth", 3)
+    board_data = request["board"]
+    depth = request.get("depth", 3)
 
-        board = board_from_json(board_data)
+    board = board_from_json(board_data)
+    move = get_best_move(board, depth)
 
-        move = get_best_move(board, depth)
-
-        return {
-            "move": move_to_json(move)
-        }
-
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
+    return {
+        "move": move_to_json(move)
+    }

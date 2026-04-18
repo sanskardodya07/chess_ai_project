@@ -1,4 +1,4 @@
-from server.board.board import Board
+from board.board import Board
 
 def board_from_json(data):
 
