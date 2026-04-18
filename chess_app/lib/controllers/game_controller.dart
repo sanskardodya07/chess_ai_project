@@ -1,6 +1,7 @@
 import '../models/board.dart';
 import '../models/move.dart';
 import '../logic/move_generator.dart';
+import '../logic/rule_checker.dart';
 
 class GameController {
 
@@ -8,7 +9,10 @@ class GameController {
 
   List<Move> getLegalMoves(int row, int col) {
 
-    List<Move> allMoves = generateAllMoves(board);
+    List<Move> allMoves = filterLegalMoves(
+        board,
+        generateLegalMoves(board)
+      );
 
     return allMoves.where((m) =>
       m.startRow == row && m.startCol == col

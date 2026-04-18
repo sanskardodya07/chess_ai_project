@@ -5,6 +5,11 @@ class Move {
   final String pieceMoved;
   final String pieceCaptured;
 
+  final String? promotion; // ⭐ ADD THIS
+
+  final bool isEnPassant;
+  final bool isCastling;
+
   Move({
     required this.startRow,
     required this.startCol,
@@ -12,5 +17,8 @@ class Move {
     required this.endCol,
     required this.pieceMoved,
     required this.pieceCaptured,
+    this.promotion,
+    this.isEnPassant = false,
+    this.isCastling = false
   });
 }
