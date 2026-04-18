@@ -5,7 +5,7 @@ import '../models/board.dart';
 import '../models/move.dart';
 
 class AIService {
-  static const String baseUrl = "https://your-app.vercel.app";
+  static const String baseUrl = "https://chess-ai-project.vercel.app/";
 
   static Future<Move?> getBestMove(Board board) async {
     try {

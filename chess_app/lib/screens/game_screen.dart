@@ -1,3 +1,5 @@
+//chess_app/lib/screens/game_screen.dart
+
 import 'package:flutter/material.dart';
 import '../widgets/chess_board.dart';
 import '../models/board.dart';
