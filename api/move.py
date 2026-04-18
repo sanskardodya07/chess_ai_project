@@ -1,6 +1,27 @@
 import json
+import os
+import sys
+
+# Ensure repo root is on the import path for Vercel runtime
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 from server.board_builder import build_board_from_json
 from agent.reasoning.alpha_beta import get_best_move
+
+def _parse_request_json(request):
+    if hasattr(request, "json"):
+        json_attr = request.json
+        if callable(json_attr):
+            return json_attr()
+        return json_attr
+    if hasattr(request, "body"):
+        body = request.body
+        if isinstance(body, (bytes, bytearray)):
+            body = body.decode("utf-8")
+        return json.loads(body)
+    raise ValueError("Unable to parse JSON from request")
 
 def handler(request):
     """Vercel serverless function handler for AI move calculation."""
@@ -20,7 +41,7 @@ def handler(request):
         return {"statusCode": 405, "body": json.dumps({"error": "Method not allowed"})}
     
     try:
-        payload = request.json
+        payload = _parse_request_json(request)
         board = build_board_from_json(payload)
         ai_move = get_best_move(board, depth=3)
 
