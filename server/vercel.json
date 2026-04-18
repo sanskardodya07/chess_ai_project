@@ -2,14 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/move.py",
+      "src": "api/handler.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/api/move",
-      "dest": "api/move.py"
+      "dest": "api/handler.py"
     }
   ]
 }
