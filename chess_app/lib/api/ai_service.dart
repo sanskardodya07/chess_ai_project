@@ -5,7 +5,8 @@ import '../models/board.dart';
 import '../models/move.dart';
 
 class AIService {
-  static const String baseUrl = "https://chess-ai-project.vercel.app/";
+  // ✅ No trailing slash
+  static const String baseUrl = "https://chess-ai-project.vercel.app";
 
   static Future<Move?> getBestMove(Board board) async {
     try {
@@ -15,7 +16,7 @@ class AIService {
         url,
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "board": board.toJson(),  // ✅ wrapped correctly
+          "board": board.toJson(),
           "depth": 3,
         }),
       );
@@ -28,16 +29,17 @@ class AIService {
       final data = jsonDecode(response.body);
       return _moveFromJson(data);
 
-    } catch (e) {
+    } catch (e, stackTrace) {          // ← also print stackTrace to see parse errors
       debugPrint("AI Exception: $e");
+      debugPrint("Stack: $stackTrace");
       return null;
     }
   }
 
   static Move _moveFromJson(Map<String, dynamic> json) {
-    final m = json["move"] as Map<String, dynamic>;  // ✅ unwrap "move"
+    final m = json["move"] as Map<String, dynamic>;
     return Move(
-      startRow: m["startRow"],        // ✅ camelCase matches serializer
+      startRow: m["startRow"],
       startCol: m["startCol"],
       endRow: m["endRow"],
       endCol: m["endCol"],

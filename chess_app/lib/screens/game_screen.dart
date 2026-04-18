@@ -171,7 +171,7 @@ class _GameScreenState extends State<GameScreen> {
     if (move == null) {
       setState(() {
         aiThinking = false;
-        status = "AI failed";
+        status = "AI failed - check logs"; // ← you'll see the actual error in debugPrint
       });
       return;
     }
