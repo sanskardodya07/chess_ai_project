@@ -1,10 +1,9 @@
 {
-  "builds": [
-    {
-      "src": "api/*.py",
-      "use": "@vercel/python"
+  "functions": {
+    "api/move.py": {
+      "runtime": "vercel-python@0.5.0"
     }
-  ],
+  },
   "routes": [
     {
       "src": "/api/move",

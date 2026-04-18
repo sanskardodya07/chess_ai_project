@@ -56,3 +56,8 @@ def handler(request):
             "headers": {"Access-Control-Allow-Origin": "*"},
             "body": json.dumps({"status": "error", "message": str(e)})
         }
+
+
+# Expose aliases for Vercel runtime compatibility
+app = handler
+application = handler
