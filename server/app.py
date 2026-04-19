@@ -28,3 +28,7 @@ async def get_move(request: Request):
     move = get_best_move(board, depth)
 
     return {"move": move_to_json(move)}
+
+@app.get("/")
+async def health():
+    return {"status": "ok"}
