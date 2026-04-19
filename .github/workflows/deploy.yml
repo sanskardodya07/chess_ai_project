@@ -24,6 +24,9 @@ jobs:
         working-directory: chess_app
         run: flutter build web --release --pwa-strategy=offline-first
 
+      - name: Copy vercel config into build output
+        run: cp chess_app/vercel.json chess_app/build/web/vercel.json
+
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
