@@ -13,7 +13,6 @@ import '../models/board_snapshot.dart';
 import '../logic/move_generator.dart';
 import '../logic/game_state_checker.dart';
 import '../logic/game_state.dart';
-import '../logic/move_notation.dart';
 
 import '../api/ai_service.dart';
 
