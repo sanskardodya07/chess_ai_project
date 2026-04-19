@@ -45,30 +45,106 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 20px;
+    gap: 16px;
     z-index: 9999;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   ">
-    <img src="icons/Icon-192.png" width="80" height="80"
-         style="border-radius: 20px; opacity: 0.9;">
-    <div style="color: rgba(255,255,255,0.5); font-size: 14px; letter-spacing: 2px;">
+    <img src="icons/Icon-192.png" width="72" height="72"
+         style="border-radius: 18px; opacity: 0.95;">
+    <div style="color: #fff; font-size: 18px; font-weight: 600; letter-spacing: 2px;">
       PACE
     </div>
+    <div style="color: rgba(255,255,255,0.35); font-size: 12px; letter-spacing: 1px;"
+         id="loading-status">Initializing...</div>
+
     <div style="
-      width: 40px; height: 40px;
-      border: 3px solid rgba(255,255,255,0.1);
-      border-top-color: #4A90D9;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    "></div>
+      width: 200px; height: 3px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 4px;
+    ">
+      <div id="loading-bar" style="
+        height: 100%;
+        width: 0%;
+        background: #4A90D9;
+        border-radius: 99px;
+        transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      "></div>
+    </div>
   </div>
 
   <style>
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeout {
+      to { opacity: 0; pointer-events: none; }
+    }
+    .done {
+      animation: fadeout 0.5s ease forwards;
+    }
   </style>
 
-  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    const bar    = document.getElementById('loading-bar');
+    const status = document.getElementById('loading-status');
+    let current  = 0;
 
+    function setProgress(pct, label) {
+      if (pct > current) {
+        current = pct;
+        bar.style.width = pct + '%';
+      }
+      if (label) status.textContent = label;
+    }
+
+    // Stage 1 — page parsed, JS starting to download
+    setProgress(10, 'Loading engine...');
+
+    // Stage 2 — crawl to 40% while main.dart.js downloads
+    // Uses PerformanceObserver to detect when main script finishes
+    let crawlTimer = setInterval(() => {
+      if (current < 38) setProgress(current + 2, 'Loading engine...');
+    }, 300);
+
+    try {
+      const observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (entry.name.includes('main.dart.js')) {
+            clearInterval(crawlTimer);
+            setProgress(45, 'Starting app...');
+          }
+          if (entry.name.includes('flutter_bootstrap')) {
+            setProgress(20, 'Loading engine...');
+          }
+        }
+      });
+      observer.observe({ type: 'resource', buffered: true });
+    } catch (_) {}
+
+    // Stage 3 — flutter engine initializing (55 → 85)
+    // Fires when flutter_bootstrap.js runs
+    window._onFlutterEngineInit = function() {
+      clearInterval(crawlTimer);
+      setProgress(55, 'Starting app...');
+      let engineTimer = setInterval(() => {
+        if (current < 83) setProgress(current + 3, 'Starting app...');
+        else clearInterval(engineTimer);
+      }, 200);
+    };
+
+    // Stage 4 — first frame rendered
+    window.addEventListener('flutter-first-frame', () => {
+      setProgress(100, 'Ready');
+      setTimeout(() => {
+        const s = document.getElementById('loading-screen');
+        if (s) {
+          s.classList.add('done');
+          setTimeout(() => s.remove(), 500);
+        }
+      }, 150);
+    });
+  </script>
+
+  <script src="flutter_bootstrap.js" async></script>
   <script>
     window.addEventListener('flutter-first-frame', () => {
       const s = document.getElementById('loading-screen');
