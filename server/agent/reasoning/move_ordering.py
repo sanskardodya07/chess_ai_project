@@ -1,4 +1,4 @@
-#move_ordering.py
+#agent/reasoning/move_ordering.py
 
 from server.agent.knowledge.evaluation import evaluate
 from server.board.rule_checker import is_in_check
@@ -70,10 +70,8 @@ def creates_threat(board, move):
 
     board.make_move(move)
 
-    # after make_move, turn has switched to opponent
-    # we want to check what the MOVING side can do next turn
-    # so we generate moves for the side that just moved
-    moving_side = "white" if board.turn == "black" else "white"
+    # ✅ FIXED BUG HERE
+    moving_side = "white" if board.turn == "black" else "black"
 
     next_moves = generate_all_moves(board, moving_side)
 
