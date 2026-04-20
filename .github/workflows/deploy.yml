@@ -3,7 +3,8 @@ name: Deploy Flutter PWA to Vercel
 on:
   push:
     branches: [main]
-
+    paths:
+      - 'chess_app/**'
 jobs:
   deploy:
     runs-on: ubuntu-latest

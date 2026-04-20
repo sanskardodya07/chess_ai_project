@@ -16,6 +16,11 @@ import '../logic/game_state.dart';
 
 import '../api/ai_service.dart';
 
+import 'dart:math';
+import '../api/auth_service.dart';
+import '../screens/auth_screen.dart';
+import '../screens/leaderboard_screen.dart';
+
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
 
@@ -24,6 +29,10 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
+
+  bool _showAuthOverlay = false;
+  int  _pendingMargin   = 0;
+  String _pendingResult = "";
 
   // ── Game ────────────────────────────────────────────
   Board  board    = Board();
@@ -54,6 +63,12 @@ class _GameScreenState extends State<GameScreen> {
     'Q': 9, 'R': 5, 'B': 3, 'N': 3, 'P': 1
   };
 
+  @override
+  void initState() {
+    super.initState();
+    AuthService.loadSession().then((_) => setState(() {}));
+  }
+  
   // ────────────────────────────────────────────────────
   @override
   void dispose() {
@@ -234,25 +249,72 @@ class _GameScreenState extends State<GameScreen> {
       case GameState.checkmate:
         statusMessage = "$other wins by checkmate";
         gameOver = true;
+        _onGameOver(state);
         break;
       case GameState.stalemate:
         statusMessage = "Draw — stalemate";
         gameOver = true;
+        _onGameOver(state);
         break;
       case GameState.draw50Move:
         statusMessage = "Draw — 50 move rule";
         gameOver = true;
+        _onGameOver(state);
         break;
       case GameState.drawRepetition:
         statusMessage = "Draw — threefold repetition";
         gameOver = true;
+        _onGameOver(state);
         break;
       case GameState.drawInsufficientMaterial:
         statusMessage = "Draw — insufficient material";
         gameOver = true;
+        _onGameOver(state);
         break;
       default:
         statusMessage = "$moving to move";
+    }
+  }
+
+  void _onGameOver(GameState state) {
+    // Compute material margin
+    final (byPlayer, byAI, pMat, aMat) = _computeCaptures();
+    final margin = pMat - aMat;
+
+    String result = "draw";
+    if (state == GameState.checkmate) {
+      // The side that just moved delivered checkmate
+      // board.turn has already flipped, so the loser is board.turn
+      result = board.turn == aiColor ? "win" : "loss";
+    }
+
+    _pendingMargin  = max(margin, 0);
+    _pendingResult  = result;
+
+    // Submit immediately if logged in
+    if (AuthService.currentUser != null) {
+      _submitScore();
+    }
+  }
+
+  Future<void> _submitScore() async {
+    final earned = await AuthService.submitScore(
+      result: _pendingResult,
+      margin: _pendingMargin,
+    );
+    if (earned != null && earned > 0 && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFF1E1E1E),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10)),
+          content: Text(
+            "+$earned points earned! Total: ${AuthService.currentUser!.totalPoints}",
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+      );
     }
   }
 
@@ -377,8 +439,9 @@ class _GameScreenState extends State<GameScreen> {
       body: Stack(
         children: [
           isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
-          if (!colorChosen)       _buildColorPickerOverlay(),
-          if (gameOver && colorChosen) _buildGameOverOverlay(),
+          if (!colorChosen)                  _buildColorPickerOverlay(),
+          if (gameOver && colorChosen)       _buildGameOverOverlay(),
+          if (_showAuthOverlay && !gameOver) _fullScreenAuth(),
         ],
       ),
     );
@@ -391,34 +454,11 @@ class _GameScreenState extends State<GameScreen> {
     return SafeArea(
       child: Column(
         children: [
-          // Opponent captures (top)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 6, 12, 2),
-            child: CapturedPiecesRow(
-              pieces: byAI,
-              advantage: aMat > pMat ? aMat - pMat : 0,
-            ),
-          ),
-          // Board
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: _buildBoardWidget(),
-          ),
-          // Player captures (bottom)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 2, 12, 0),
-            child: CapturedPiecesRow(
-              pieces: byPlayer,
-              advantage: pMat > aMat ? pMat - aMat : 0,
-            ),
-          ),
-          // Status
-          _buildStatusBar(),
-          // Move history
+          // Move history ABOVE board — slim
           SizedBox(
-            height: 76,
+            height: 52,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: MoveHistoryPanel(
                 moves:        board.moveHistory,
                 viewingIndex: viewingIndex,
@@ -427,7 +467,32 @@ class _GameScreenState extends State<GameScreen> {
               ),
             ),
           ),
-          // Controls
+
+          // Opponent captures
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 2, 12, 2),
+            child: CapturedPiecesRow(
+              pieces:    byAI,
+              advantage: aMat > pMat ? aMat - pMat : 0,
+            ),
+          ),
+
+          // Board
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: _buildBoardWidget(),
+          ),
+
+          // Player captures
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 2, 12, 0),
+            child: CapturedPiecesRow(
+              pieces:    byPlayer,
+              advantage: pMat > aMat ? pMat - aMat : 0,
+            ),
+          ),
+
+          _buildStatusBar(),
           _buildControls(),
           const SizedBox(height: 6),
         ],
@@ -572,6 +637,32 @@ class _GameScreenState extends State<GameScreen> {
             onTap:   _confirmReset,
             tooltip: "New Game",
           ),
+          const SizedBox(width: 8),
+          _ctrlBtn(
+            icon:    Icons.leaderboard_rounded,
+            onTap:   () => Navigator.push(context,
+                MaterialPageRoute(
+                    builder: (_) => const LeaderboardScreen())),
+            tooltip: "Leaderboard",
+          ),
+          if (AuthService.currentUser != null) ...[
+            const SizedBox(width: 8),
+            _ctrlBtn(
+              icon:    Icons.logout_rounded,
+              onTap:   () async {
+                await AuthService.logout();
+                setState(() {});
+              },
+              tooltip: "Sign Out",
+            ),
+          ] else ...[
+            const SizedBox(width: 8),
+            _ctrlBtn(
+              icon:    Icons.person_outline_rounded,
+              onTap:   () => setState(() => _showAuthOverlay = true),
+              tooltip: "Sign In",
+            ),
+          ],
           if (viewingIndex != null) ...[
             const SizedBox(width: 8),
             _ctrlBtn(
@@ -660,7 +751,7 @@ class _GameScreenState extends State<GameScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                "Pick a color to start the game",
+                "Would you like to choose White or Black?",
                 style: TextStyle(
                   color: Colors.grey[500],
                   fontSize: 13,
@@ -728,13 +819,16 @@ class _GameScreenState extends State<GameScreen> {
 
   // ── Game over overlay ─────────────────────────────────
   Widget _buildGameOverOverlay() {
+    final isAnon  = AuthService.currentUser == null;
+    final isWin   = _pendingResult == "win";
+    final bonus   = isWin ? (1 + ((_pendingMargin + 1) / 2).ceil()) : 0;
+
     return Container(
       color: Colors.black.withValues(alpha: 0.78),
       child: Center(
         child: Container(
           width: 300,
-          padding: const EdgeInsets.symmetric(
-              horizontal: 28, vertical: 36),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
           decoration: BoxDecoration(
             color: const Color(0xFF232323),
             borderRadius: BorderRadius.circular(22),
@@ -748,56 +842,132 @@ class _GameScreenState extends State<GameScreen> {
               ),
             ],
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(_gameOverEmoji(),
-                  style: const TextStyle(fontSize: 52)),
-              const SizedBox(height: 14),
-              const Text(
-                "GAME OVER",
-                style: TextStyle(
-                  color: Colors.white38,
-                  fontSize: 12,
-                  letterSpacing: 3,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                statusMessage,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 30),
-              GestureDetector(
-                onTap: _resetGame,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4A90D9),
-                    borderRadius: BorderRadius.circular(13),
-                  ),
-                  child: const Text(
-                    "New Game",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+          child: _showAuthOverlay
+              ? AuthScreen(
+                  onSuccess: () {
+                    setState(() => _showAuthOverlay = false);
+                    _submitScore();
+                  },
+                  onSkip: () =>
+                      setState(() => _showAuthOverlay = false),
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_gameOverEmoji(),
+                        style: const TextStyle(fontSize: 48)),
+                    const SizedBox(height: 12),
+                    const Text(
+                      "GAME OVER",
+                      style: TextStyle(
+                        color: Colors.white38,
+                        fontSize: 11,
+                        letterSpacing: 3,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                    textAlign: TextAlign.center,
-                  ),
+                    const SizedBox(height: 8),
+                    Text(
+                      statusMessage,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+
+                    // Points preview for wins
+                    if (isWin) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4A90D9)
+                              .withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          "+$bonus points",
+                          style: const TextStyle(
+                            color: Color(0xFF4A90D9),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 24),
+
+                    // Sign in prompt for anonymous
+                    if (isAnon && isWin) ...[
+                      const Text(
+                        "Sign in to save your score",
+                        style: TextStyle(
+                            color: Colors.white60, fontSize: 13),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      GestureDetector(
+                        onTap: () =>
+                            setState(() => _showAuthOverlay = true),
+                        child: Container(
+                          width: double.infinity,
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 13),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4A90D9),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            "Sign In / Register",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+
+                    GestureDetector(
+                      onTap: _resetGame,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        decoration: BoxDecoration(
+                          color: isAnon && isWin
+                              ? const Color(0xFF2A2A2A)
+                              : const Color(0xFF4A90D9),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          "New Game",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
         ),
       ),
+    );
+  }
+
+  Widget _fullScreenAuth() {
+    return AuthScreen(
+      onSuccess: () => setState(() => _showAuthOverlay = false),
+      onSkip:    () => setState(() => _showAuthOverlay = false),
     );
   }
 
