@@ -12,6 +12,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.logging.Logger;
 
+@CrossOrigin(origins = "https://pace-chessai.vercel.app")
 @RestController
 public class MoveController {
 

@@ -9,6 +9,7 @@ import redis.clients.jedis.Tuple;
 
 import java.util.*;
 
+@CrossOrigin(origins = "https://pace-chessai.vercel.app")
 @RestController
 public class AuthController {
 
