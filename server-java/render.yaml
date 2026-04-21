@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: pace-chess-server
+    env: docker
+    healthCheckPath: /health
+    envVars:
+      - key: UPSTASH_REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
