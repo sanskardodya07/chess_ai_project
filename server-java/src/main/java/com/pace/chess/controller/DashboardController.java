@@ -2,7 +2,7 @@ package com.pace.chess.controller;
 
 import com.pace.chess.service.RedisService;
 
-import main.java.com.pace.chess.controller.MoveController;
+import com.pace.chess.controller.MoveController;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
