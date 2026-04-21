@@ -5,7 +5,8 @@ import java.net.http.HttpResponse;
 import java.util.Scanner;
 
 public class ChessCLI {
-    private static final String SERVER_URL = "http://localhost:8080/api/move";
+    // To this:
+    private static final String SERVER_URL = "https://pace-server.onrender.com/api/move";
     private static String[][] board = new String[8][8];
 
     public static void main(String[] args) {

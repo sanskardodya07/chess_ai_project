@@ -18,7 +18,7 @@ class AuthUser {
 }
 
 class AuthService {
-  static const String _baseUrl = "https://chess-ai-project.vercel.app";
+  static const String _baseUrl = "https://pace-server.onrender.com/";
   static const String _tokenKey = "pace_token";
   static const String _userKey  = "pace_username";
 

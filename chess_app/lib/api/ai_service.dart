@@ -6,7 +6,7 @@ import '../models/move.dart';
 
 class AIService {
   // ✅ No trailing slash
-  static const String baseUrl = "https://chess-ai-project.vercel.app";
+  static const String baseUrl = "https://pace-server.onrender.com/";
 
   static Future<Move?> getBestMove(Board board) async {
     try {
