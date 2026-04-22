@@ -37,7 +37,7 @@ public class MoveController {
 
         try {
             Move move = executor.submit(() -> AlphaBeta.getBestMove(board, depth))
-                                .get(30, TimeUnit.SECONDS);
+                                .get(10000, TimeUnit.SECONDS);
 
             if (move == null)
                 return ResponseEntity.internalServerError().body(Map.of("error", "No legal moves"));
