@@ -17,7 +17,7 @@ class AIService {
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "board": board.toJson(),
-          "depth": 3,
+          "depth": 4,
         }),
       );
 

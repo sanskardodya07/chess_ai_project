@@ -2,59 +2,61 @@ package com.pace.chess.engine;
 
 import com.pace.chess.model.Board;
 import com.pace.chess.model.Move;
-
 import java.util.List;
 
 public class AlphaBeta {
 
-    public static double alphaBeta(Board board, int depth, double alpha, double beta, boolean max) {
-        if (depth == 0 || !"ongoing".equals(board.gameStatus()))
-            return Evaluation.evaluate(board);
-
-        List<Move> moves = board.getAllLegalMoves();
-
-        if (max) {
-            double best = Double.NEGATIVE_INFINITY;
-            for (Move m : moves) {
-                board.makeMove(m);
-                best  = Math.max(best, alphaBeta(board, depth-1, alpha, beta, false));
-                alpha = Math.max(alpha, best);
-                board.undoMove();
-                if (beta <= alpha) break;
-            }
-            return best;
-        } else {
-            double best = Double.POSITIVE_INFINITY;
-            for (Move m : moves) {
-                board.makeMove(m);
-                best = Math.min(best, alphaBeta(board, depth-1, alpha, beta, true));
-                beta = Math.min(beta, best);
-                board.undoMove();
-                if (beta <= alpha) break;
-            }
-            return best;
-        }
-    }
-
     public static Move getBestMove(Board board, int depth) {
-        boolean max = "white".equals(board.turn);
-        double alpha = Double.NEGATIVE_INFINITY, beta = Double.POSITIVE_INFINITY;
-        List<Move> moves = board.getAllLegalMoves();
-        moves.sort((a, b) -> Boolean.compare(!a.pieceCaptured.isEmpty(), !b.pieceCaptured.isEmpty()));
+        int color = "white".equals(board.turn) ? 1 : -1;
+        double alpha = Double.NEGATIVE_INFINITY;
+        double beta = Double.POSITIVE_INFINITY;
 
-        Move best = null;
-        double bestEval = max ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
+        List<Move> moves = board.getAllLegalMoves();
+        MoveSorter.sortMoves(moves, board);
+
+        Move bestMove = null;
+        double bestValue = Double.NEGATIVE_INFINITY;
 
         for (Move m : moves) {
             board.makeMove(m);
-            double eval = alphaBeta(board, depth-1, alpha, beta, !max);
+            // Evaluation is ALWAYS from White's perspective, negamax flips it
+            double value = -negamax(board, depth - 1, -beta, -alpha, -color);
             board.undoMove();
-            if ((max && eval > bestEval) || (!max && eval < bestEval)) {
-                bestEval = eval; best = m;
+
+            if (value > bestValue) {
+                bestValue = value;
+                bestMove = m;
             }
-            if (max) alpha = Math.max(alpha, eval);
-            else     beta  = Math.min(beta,  eval);
+            alpha = Math.max(alpha, value);
         }
-        return best;
+        return bestMove;
+    }
+
+    private static double negamax(Board board, int depth, double alpha, double beta, int color) {
+        List<Move> moves = board.getAllLegalMoves();
+
+        // PERFORMANCE FIX: Check if game is over without calling expensive gameStatus()
+        if (moves.isEmpty()) {
+            if (RuleChecker.isInCheck(board, board.turn)) {
+                return -1000000; // Checkmate: Current player loses
+            }
+            return 0; // Stalemate: Draw
+        }
+
+        if (depth == 0) return color * Evaluation.evaluate(board);
+
+        MoveSorter.sortMoves(moves, board); // Pass board to check for endgame phase
+
+        double max = Double.NEGATIVE_INFINITY;
+        for (Move m : moves) {
+            board.makeMove(m);
+            double score = -negamax(board, depth - 1, -beta, -alpha, -color);
+            board.undoMove();
+
+            max = Math.max(max, score);
+            alpha = Math.max(alpha, score);
+            if (alpha >= beta) break;
+        }
+        return max;
     }
 }

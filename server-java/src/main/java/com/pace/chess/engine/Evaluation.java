@@ -5,74 +5,75 @@ import java.util.Map;
 
 public class Evaluation {
 
-    private static final Map<Character,Integer> VALUES =
-        Map.of('P',100,'N',300,'B',300,'R',500,'Q',900,'K',0);
+    private static final Map<Character, Integer> PIECE_VALUES = Map.of(
+        'P', 100, 'N', 320, 'B', 330, 'R', 500, 'Q', 900, 'K', 1000000 
+    );
 
     public static double evaluate(Board board) {
-        String phase = detectPhase(board);
-        return materialScore(board)
-             + developmentScore(board, phase)
-             + kingScore(board, phase)
-             + attackScore(board);
-    }
+        double material = 0;
+        double strategy = 0;
+        int majorPieceCount = 0;
 
-    private static String detectPhase(Board board) {
-        int total = 0;
-        for (String[] row : board.board)
-            for (String p : row)
-                if (!p.isEmpty() && p.charAt(1) != 'K')
-                    total += VALUES.get(p.charAt(1));
-        int s = total / 100;
-        return s > 40 ? "opening" : s > 20 ? "middlegame" : "endgame";
-    }
+        // Pass 1: Count pieces and check for "Home Square" occupancy
+        boolean whiteUndeveloped = board.board[7][1].equals("wN") || board.board[7][6].equals("wN") || 
+                                 board.board[7][2].equals("wB") || board.board[7][5].equals("wB");
+        
+        boolean blackUndeveloped = board.board[0][1].equals("bN") || board.board[0][6].equals("bN") || 
+                                 board.board[0][2].equals("bB") || board.board[0][5].equals("bB");
 
-    private static double materialScore(Board board) {
-        double score = 0;
-        for (String[] row : board.board)
-            for (String p : row)
-                if (!p.isEmpty())
-                    score += p.charAt(0)=='w' ? VALUES.get(p.charAt(1)) : -VALUES.get(p.charAt(1));
-        return score;
-    }
-
-    private static double developmentScore(Board board, String phase) {
-        if (!"opening".equals(phase)) return 0;
-        double s = 0;
-        if (!board.board[7][1].equals("wN")) s += 0.3;
-        if (!board.board[7][6].equals("wN")) s += 0.3;
-        if (!board.board[7][2].equals("wB")) s += 0.3;
-        if (!board.board[7][5].equals("wB")) s += 0.3;
-        if (!board.board[0][1].equals("bN")) s -= 0.3;
-        if (!board.board[0][6].equals("bN")) s -= 0.3;
-        if (!board.board[0][2].equals("bB")) s -= 0.3;
-        if (!board.board[0][5].equals("bB")) s -= 0.3;
-        return s;
-    }
-
-    private static double kingScore(Board board, String phase) {
-        double s = 0;
-        int[] wk = board.whiteKing, bk = board.blackKing;
-        if (!"endgame".equals(phase)) {
-            if (wk[1]==3||wk[1]==4) s -= 0.5;
-            if (bk[1]==3||bk[1]==4) s += 0.5;
-        } else {
-            s += centerBonus(wk) - centerBonus(bk);
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                String p = board.board[r][c];
+                if (!p.isEmpty() && p.charAt(1) != 'P' && p.charAt(1) != 'K') majorPieceCount++;
+            }
         }
-        return s;
-    }
+        boolean isEndgame = majorPieceCount <= 4;
 
-    private static double centerBonus(int[] pos) {
-        return (4 - Math.abs(3.5-pos[0]) - Math.abs(3.5-pos[1])) * 0.2;
-    }
-
-    private static double attackScore(Board board) {
-        double s = 0;
-        for (int r=0; r<8; r++)
-            for (int c=0; c<8; c++) {
+        // Pass 2: Main loop
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
                 String p = board.board[r][c];
                 if (p.isEmpty()) continue;
-                s += p.charAt(0)=='w' ? (6-r)*0.05 : -(r-1)*0.05;
+
+                char color = p.charAt(0);
+                char type = p.charAt(1);
+                
+                // 1. Material
+                material += (color == 'w') ? PIECE_VALUES.get(type) : -PIECE_VALUES.get(type);
+
+                // 2. Strategy Weights
+                double bonus = PositionWeights.getWeight(type, color, r, c, isEndgame) / 50.0;
+
+                // 3. DEVELOPMENT RULE:
+                // Penalty for moving a piece again if it's NOT on its starting square 
+                // AND the minor pieces are still at home.
+                if (color == 'w' && whiteUndeveloped && !isStartingSquare(type, 'w', r, c)) {
+                    bonus -= 10.0; // Penalty makes the engine prefer developing a new piece
+                } else if (color == 'b' && blackUndeveloped && !isStartingSquare(type, 'b', r, c)) {
+                    bonus += 10.0; // Flipped for black
+                }
+
+                strategy += (color == 'w') ? bonus : -bonus;
             }
-        return s;
+        }
+
+        double tempo = (board.turn.equals("white")) ? 0.1 : -0.1;
+        return material + strategy + tempo;
+    }
+
+    private static boolean isStartingSquare(char type, char color, int r, int c) {
+        if (color == 'w') {
+            return (type == 'N' && r == 7 && (c == 1 || c == 6)) ||
+                   (type == 'B' && r == 7 && (c == 2 || c == 5)) ||
+                   (type == 'R' && r == 7 && (c == 0 || c == 7)) ||
+                   (type == 'Q' && r == 7 && c == 3) ||
+                   (type == 'K' && r == 7 && c == 4);
+        } else {
+            return (type == 'N' && r == 0 && (c == 1 || c == 6)) ||
+                   (type == 'B' && r == 0 && (c == 2 || c == 5)) ||
+                   (type == 'R' && r == 0 && (c == 0 || c == 7)) ||
+                   (type == 'Q' && r == 0 && c == 3) ||
+                   (type == 'K' && r == 0 && c == 4);
+        }
     }
 }

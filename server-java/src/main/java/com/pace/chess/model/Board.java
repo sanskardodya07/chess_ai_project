@@ -2,7 +2,6 @@ package com.pace.chess.model;
 
 import com.pace.chess.engine.MoveGenerator;
 import com.pace.chess.engine.RuleChecker;
-
 import java.util.*;
 
 public class Board {
@@ -63,6 +62,12 @@ public class Board {
         if ("wK".equals(move.pieceMoved)) whiteKing = new int[]{move.endRow, move.endCol};
         if ("bK".equals(move.pieceMoved)) blackKing = new int[]{move.endRow, move.endCol};
 
+        // Handle Rook captures (losing castling rights even if rook didn't move)
+        if (move.endRow == 0 && move.endCol == 0) castlingRights.put("bQ", false);
+        if (move.endRow == 0 && move.endCol == 7) castlingRights.put("bK", false);
+        if (move.endRow == 7 && move.endCol == 0) castlingRights.put("wQ", false);
+        if (move.endRow == 7 && move.endCol == 7) castlingRights.put("wK", false);
+
         switch (move.pieceMoved) {
             case "wK" -> { castlingRights.put("wK",false); castlingRights.put("wQ",false); }
             case "bK" -> { castlingRights.put("bK",false); castlingRights.put("bQ",false); }
@@ -111,9 +116,7 @@ public class Board {
         List<Move> moves = getAllLegalMoves();
         if (moves.isEmpty()) {
             String winner = "white".equals(turn) ? "Black" : "White";
-            return RuleChecker.isInCheck(this, turn)
-                ? winner + " wins by checkmate"
-                : "Draw by stalemate";
+            return RuleChecker.isInCheck(this, turn) ? winner + " wins by checkmate" : "Draw by stalemate";
         }
         return "ongoing";
     }

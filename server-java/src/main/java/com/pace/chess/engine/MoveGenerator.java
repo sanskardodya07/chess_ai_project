@@ -2,7 +2,6 @@ package com.pace.chess.engine;
 
 import com.pace.chess.model.Board;
 import com.pace.chess.model.Move;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,29 +36,41 @@ public class MoveGenerator {
         int dir      = piece.charAt(0) == 'w' ? -1 : 1;
         int startRow = piece.charAt(0) == 'w' ?  6 : 1;
 
+        // Forward moves
         int nr = r + dir;
         if (nr >= 0 && nr < 8 && board.board[nr][c].isEmpty()) {
-            if (nr == 0 || nr == 7)
+            if (nr == 0 || nr == 7) {
                 moves.add(new Move(new int[]{r,c}, new int[]{nr,c}, piece, "", "Q"));
-            else {
+                moves.add(new Move(new int[]{r,c}, new int[]{nr,c}, piece, "", "R"));
+                moves.add(new Move(new int[]{r,c}, new int[]{nr,c}, piece, "", "B"));
+                moves.add(new Move(new int[]{r,c}, new int[]{nr,c}, piece, "", "N"));
+            } else {
                 moves.add(new Move(new int[]{r,c}, new int[]{nr,c}, piece, ""));
                 if (r == startRow && board.board[r + 2*dir][c].isEmpty())
                     moves.add(new Move(new int[]{r,c}, new int[]{r+2*dir,c}, piece, ""));
             }
         }
+
+        // Captures
         for (int dc : new int[]{-1, 1}) {
             int nc = c + dc;
             if (nc < 0 || nc >= 8 || nr < 0 || nr >= 8) continue;
             String target = board.board[nr][nc];
-            if (!target.isEmpty() && target.charAt(0) != piece.charAt(0))
-                moves.add(new Move(new int[]{r,c}, new int[]{nr,nc}, piece, target));
-            if (board.enPassantTarget != null
-                    && board.enPassantTarget[0] == nr && board.enPassantTarget[1] == nc) {
+            
+            if (!target.isEmpty() && target.charAt(0) != piece.charAt(0)) {
+                if (nr == 0 || nr == 7) {
+                    moves.add(new Move(new int[]{r,c}, new int[]{nr,nc}, piece, target, "Q"));
+                } else {
+                    moves.add(new Move(new int[]{r,c}, new int[]{nr,nc}, piece, target));
+                }
+            }
+            
+            // En Passant
+            if (board.enPassantTarget != null && board.enPassantTarget[0] == nr && board.enPassantTarget[1] == nc) {
                 String captured = piece.charAt(0) == 'w' ? "bP" : "wP";
                 Move m = new Move(new int[]{r,c}, new int[]{nr,nc}, piece, captured);
                 m.isEnPassant = true;
-                m.enPassantCapturePos = piece.charAt(0) == 'w'
-                    ? new int[]{nr+1, nc} : new int[]{nr-1, nc};
+                m.enPassantCapturePos = piece.charAt(0) == 'w' ? new int[]{nr+1, nc} : new int[]{nr-1, nc};
                 moves.add(m);
             }
         }
@@ -107,7 +118,6 @@ public class MoveGenerator {
         }
 
         if (RuleChecker.isInCheck(board, color)) return;
-
         String enemy = piece.charAt(0)=='w' ? "b" : "w";
 
         if ("wK".equals(piece)) {
@@ -135,11 +145,8 @@ public class MoveGenerator {
         }
     }
 
-    // matches Python _square_attacked exactly
     public static boolean isSquareAttacked(Board board, int row, int col, String attacker) {
-        int[][] pawnDirs = attacker.equals("w")
-            ? new int[][]{{-1,-1},{-1,1}}
-            : new int[][]{{1,-1},{1,1}};
+        int[][] pawnDirs = attacker.equals("w") ? new int[][]{{1,-1},{1,1}} : new int[][]{{-1,-1},{-1,1}};
         for (int[] d : pawnDirs) {
             int r=row+d[0], c=col+d[1];
             if (r>=0&&r<8&&c>=0&&c<8 && board.board[r][c].equals(attacker+"P")) return true;

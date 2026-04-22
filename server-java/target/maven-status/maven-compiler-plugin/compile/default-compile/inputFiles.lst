@@ -7,8 +7,10 @@ h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\service\AuthS
 h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\controller\AuthController.java
 h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\controller\MoveController.java
 h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\engine\AlphaBeta.java
+h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\engine\MoveSorter.java
 h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\controller\DashboardController.java
 h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\service\RedisService.java
+h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\engine\PositionWeights.java
 h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\engine\Evaluation.java
 h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\config\CorsConfig.java
 h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\model\Move.java

@@ -37,7 +37,7 @@ public class MoveController {
 
         try {
             Move move = executor.submit(() -> AlphaBeta.getBestMove(board, depth))
-                                .get(8, TimeUnit.SECONDS);
+                                .get(30, TimeUnit.SECONDS);
 
             if (move == null)
                 return ResponseEntity.internalServerError().body(Map.of("error", "No legal moves"));
@@ -50,8 +50,8 @@ public class MoveController {
             log.warning("[" + time + "] Timeout at depth " + depth + ", retrying at depth 2");
             addLog(time, turn, depth, "timeout", null);
             try {
-                Move move = executor.submit(() -> AlphaBeta.getBestMove(board, 2))
-                                    .get(5, TimeUnit.SECONDS);
+                Move move = executor.submit(() -> AlphaBeta.getBestMove(board, depth - 1))
+                                    .get(30, TimeUnit.SECONDS);
                 if (move == null)
                     return ResponseEntity.status(504).body(Map.of("error", "Engine timeout"));
                 return ResponseEntity.ok(Map.of("move", serializeMove(move)));
