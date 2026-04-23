@@ -23,13 +23,12 @@ class MoveHistoryPanel extends StatefulWidget {
 class _MoveHistoryPanelState extends State<MoveHistoryPanel> {
   final ScrollController _sc = ScrollController();
 
-  static const double _cellW = 72.0;
-  static const double _numW  = 28.0;
+  static const double _cellW = 68.0; // Slightly tighter for the single line
+  static const double _numW  = 24.0;
 
   @override
   void didUpdateWidget(MoveHistoryPanel old) {
     super.didUpdateWidget(old);
-    // Auto-scroll to latest when a new move arrives and not viewing history
     if (widget.moves.length != old.moves.length && widget.viewingIndex == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_sc.hasClients) {
@@ -53,13 +52,13 @@ class _MoveHistoryPanelState extends State<MoveHistoryPanel> {
         width: _numW,
         child: Text(
           "$n.",
-          style: const TextStyle(color: Color(0xFF999999), fontSize: 12),
+          style: const TextStyle(color: Color(0xFF999999), fontSize: 13),
           textAlign: TextAlign.right,
         ),
       );
 
   Widget _moveCell(int idx) {
-    if (idx >= widget.moves.length) return SizedBox(width: _cellW);
+    if (idx >= widget.moves.length) return const SizedBox();
 
     final bool selected = widget.viewingIndex == idx;
     final String label = getMoveNotation(widget.moves[idx]);
@@ -69,7 +68,7 @@ class _MoveHistoryPanelState extends State<MoveHistoryPanel> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         width: _cellW,
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
         decoration: BoxDecoration(
           color: selected
               ? const Color(0xFF4A90D9).withValues(alpha: 0.22)
@@ -118,46 +117,36 @@ class _MoveHistoryPanelState extends State<MoveHistoryPanel> {
     );
   }
 
+  // UPDATED: Single line horizontal scroll for mobile
   Widget _buildMobile() {
     final pairs = ((widget.moves.length + 1) ~/ 2);
     if (pairs == 0) {
       return Center(
         child: Text(
           "No moves yet",
-          style: TextStyle(color: Colors.grey[500], fontSize: 12),
+          style: TextStyle(color: Colors.grey[500], fontSize: 13),
         ),
       );
+    }
+
+    List<Widget> rowItems = [];
+    for (int i = 0; i < pairs; i++) {
+      rowItems.add(_numCell(i + 1));
+      rowItems.add(const SizedBox(width: 4));
+      rowItems.add(_moveCell(i * 2));
+      if (i * 2 + 1 < widget.moves.length) {
+        rowItems.add(_moveCell(i * 2 + 1));
+      }
+      rowItems.add(const SizedBox(width: 12)); // Gap between turns
     }
 
     return SingleChildScrollView(
       controller: _sc,
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // White row (with move numbers)
-          Row(
-            children: List.generate(
-              pairs,
-              (i) => Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [_numCell(i + 1), _moveCell(i * 2)],
-              ),
-            ),
-          ),
-          // Black row (spacer where number would be, aligns under white)
-          Row(
-            children: List.generate(
-              pairs,
-              (i) => Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [SizedBox(width: _numW), _moveCell(i * 2 + 1)],
-              ),
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: rowItems,
       ),
     );
   }

@@ -4,6 +4,7 @@ h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\engine\RuleCh
 h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\service\BoardDeserializer.java
 h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\model\Board.java
 h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\service\AuthService.java
+h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\model\Piece.java
 h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\controller\AuthController.java
 h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\controller\MoveController.java
 h:\sanskarVS\ANS\chess_ai\server-java\src\main\java\com\pace\chess\engine\AlphaBeta.java

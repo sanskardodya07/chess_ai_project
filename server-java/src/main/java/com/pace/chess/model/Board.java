@@ -1,123 +1,115 @@
 package com.pace.chess.model;
 
-import com.pace.chess.engine.MoveGenerator;
-import com.pace.chess.engine.RuleChecker;
 import java.util.*;
 
 public class Board {
-    public String[][] board;
-    public String turn;
-    public int[] whiteKing;
-    public int[] blackKing;
+    public int[] board;
+    public int turn; // Piece.WHITE or Piece.BLACK
+    public int whiteKing;
+    public int blackKing;
     public Map<String, Boolean> castlingRights;
-    public int[] enPassantTarget;
+    public Integer enPassantTarget;
     public List<Move> moveHistory;
 
     public Board() {
-        board = new String[][]{
-            {"bR","bN","bB","bQ","bK","bB","bN","bR"},
-            {"bP","bP","bP","bP","bP","bP","bP","bP"},
-            {"","","","","","","",""},
-            {"","","","","","","",""},
-            {"","","","","","","",""},
-            {"","","","","","","",""},
-            {"wP","wP","wP","wP","wP","wP","wP","wP"},
-            {"wR","wN","wB","wQ","wK","wB","wN","wR"}
-        };
-        turn = "white";
-        whiteKing = new int[]{7, 4};
-        blackKing = new int[]{0, 4};
+        board = new int[128];
+        turn = Piece.WHITE;
+        whiteKing = 116; // e1 in 0x88 (7*16 + 4)
+        blackKing = 4;   // e8 in 0x88 (0*16 + 4)
         castlingRights = new HashMap<>(Map.of("wK",true,"wQ",true,"bK",true,"bQ",true));
         enPassantTarget = null;
         moveHistory = new ArrayList<>();
+        // The board array is left empty here because BoardDeserializer will fill it from the API!
     }
 
     public void makeMove(Move move) {
-        move.prevEnPassant      = enPassantTarget == null ? null : Arrays.copyOf(enPassantTarget, 2);
+        move.prevEnPassant      = enPassantTarget;
         move.prevCastlingRights = new HashMap<>(castlingRights);
-        move.prevWhiteKing      = Arrays.copyOf(whiteKing, 2);
-        move.prevBlackKing      = Arrays.copyOf(blackKing, 2);
+        move.prevWhiteKing      = whiteKing;
+        move.prevBlackKing      = blackKing;
 
-        board[move.startRow][move.startCol] = "";
-        board[move.endRow][move.endCol]     = move.pieceMoved;
+        board[move.startSquare] = Piece.EMPTY;
+        board[move.endSquare]   = move.pieceMoved;
 
-        if (move.promotion != null)
-            board[move.endRow][move.endCol] = move.pieceMoved.charAt(0) + move.promotion;
+        if (move.promotion != 0) {
+            int color = move.pieceMoved & (Piece.WHITE | Piece.BLACK);
+            board[move.endSquare] = color | move.promotion;
+        }
 
-        if (move.isEnPassant && move.enPassantCapturePos != null)
-            board[move.enPassantCapturePos[0]][move.enPassantCapturePos[1]] = "";
+        if (move.isEnPassant && move.enPassantCapturePos != -1) {
+            board[move.enPassantCapturePos] = Piece.EMPTY;
+        }
 
         enPassantTarget = null;
-        if (move.pieceMoved.charAt(1) == 'P' && Math.abs(move.startRow - move.endRow) == 2) {
-            int midRow = (move.startRow + move.endRow) / 2;
-            enPassantTarget = new int[]{midRow, move.startCol};
+        // Pawn double push -> set en passant target
+        if ((move.pieceMoved & 7) == Piece.PAWN && Math.abs(move.startSquare - move.endSquare) == 32) {
+            enPassantTarget = (move.startSquare + move.endSquare) / 2;
         }
 
         if (move.isCastling) {
-            char c = move.pieceMoved.charAt(0);
-            if (move.endCol == 6) { board[move.endRow][7] = ""; board[move.endRow][5] = c + "R"; }
-            else                  { board[move.endRow][0] = ""; board[move.endRow][3] = c + "R"; }
+            int color = move.pieceMoved & (Piece.WHITE | Piece.BLACK);
+            if (move.endSquare % 16 == 6) { // Kingside
+                board[move.endSquare + 1] = Piece.EMPTY;
+                board[move.endSquare - 1] = color | Piece.ROOK;
+            } else { // Queenside
+                board[move.endSquare - 2] = Piece.EMPTY;
+                board[move.endSquare + 1] = color | Piece.ROOK;
+            }
         }
 
-        if ("wK".equals(move.pieceMoved)) whiteKing = new int[]{move.endRow, move.endCol};
-        if ("bK".equals(move.pieceMoved)) blackKing = new int[]{move.endRow, move.endCol};
+        if ((move.pieceMoved & 7) == Piece.KING) {
+            if ((move.pieceMoved & Piece.WHITE) != 0) whiteKing = move.endSquare;
+            else blackKing = move.endSquare;
+        }
 
-        // Handle Rook captures (losing castling rights even if rook didn't move)
-        if (move.endRow == 0 && move.endCol == 0) castlingRights.put("bQ", false);
-        if (move.endRow == 0 && move.endCol == 7) castlingRights.put("bK", false);
-        if (move.endRow == 7 && move.endCol == 0) castlingRights.put("wQ", false);
-        if (move.endRow == 7 && move.endCol == 7) castlingRights.put("wK", false);
+        // Castling rights invalidation based on square endpoints
+        if (move.endSquare == 0) castlingRights.put("bQ", false);
+        if (move.endSquare == 7) castlingRights.put("bK", false);
+        if (move.endSquare == 112) castlingRights.put("wQ", false);
+        if (move.endSquare == 119) castlingRights.put("wK", false);
 
-        switch (move.pieceMoved) {
-            case "wK" -> { castlingRights.put("wK",false); castlingRights.put("wQ",false); }
-            case "bK" -> { castlingRights.put("bK",false); castlingRights.put("bQ",false); }
-            case "wR" -> { if (move.startCol==0) castlingRights.put("wQ",false);
-                           if (move.startCol==7) castlingRights.put("wK",false); }
-            case "bR" -> { if (move.startCol==0) castlingRights.put("bQ",false);
-                           if (move.startCol==7) castlingRights.put("bK",false); }
+        if ((move.pieceMoved & 7) == Piece.KING) {
+            if ((move.pieceMoved & Piece.WHITE) != 0) { castlingRights.put("wK", false); castlingRights.put("wQ", false); }
+            else { castlingRights.put("bK", false); castlingRights.put("bQ", false); }
+        } else if ((move.pieceMoved & 7) == Piece.ROOK) {
+            if (move.startSquare == 112) castlingRights.put("wQ", false);
+            if (move.startSquare == 119) castlingRights.put("wK", false);
+            if (move.startSquare == 0) castlingRights.put("bQ", false);
+            if (move.startSquare == 7) castlingRights.put("bK", false);
         }
 
         moveHistory.add(move);
-        turn = "white".equals(turn) ? "black" : "white";
+        turn = (turn == Piece.WHITE) ? Piece.BLACK : Piece.WHITE;
     }
 
     public void undoMove() {
         if (moveHistory.isEmpty()) return;
         Move move = moveHistory.remove(moveHistory.size() - 1);
 
-        board[move.startRow][move.startCol] = move.pieceMoved;
+        board[move.startSquare] = move.pieceMoved;
 
-        if (move.isEnPassant && move.enPassantCapturePos != null) {
-            board[move.endRow][move.endCol] = "";
-            board[move.enPassantCapturePos[0]][move.enPassantCapturePos[1]] = move.pieceCaptured;
+        if (move.isEnPassant && move.enPassantCapturePos != -1) {
+            board[move.endSquare] = Piece.EMPTY;
+            board[move.enPassantCapturePos] = move.pieceCaptured;
         } else {
-            board[move.endRow][move.endCol] = move.pieceCaptured;
+            board[move.endSquare] = move.pieceCaptured;
         }
 
         if (move.isCastling) {
-            char c = move.pieceMoved.charAt(0);
-            if (move.endCol == 6) { board[move.endRow][5]=""; board[move.endRow][7]=c+"R"; }
-            else                  { board[move.endRow][3]=""; board[move.endRow][0]=c+"R"; }
+            int color = move.pieceMoved & (Piece.WHITE | Piece.BLACK);
+            if (move.endSquare % 16 == 6) { 
+                board[move.endSquare - 1] = Piece.EMPTY; 
+                board[move.endSquare + 1] = color | Piece.ROOK; 
+            } else { 
+                board[move.endSquare + 1] = Piece.EMPTY; 
+                board[move.endSquare - 2] = color | Piece.ROOK; 
+            }
         }
 
         enPassantTarget  = move.prevEnPassant;
         castlingRights   = move.prevCastlingRights;
         whiteKing        = move.prevWhiteKing;
         blackKing        = move.prevBlackKing;
-        turn = "white".equals(turn) ? "black" : "white";
-    }
-
-    public List<Move> getAllLegalMoves() {
-        List<Move> moves = MoveGenerator.generateAllMoves(this, turn);
-        return RuleChecker.filterLegalMoves(this, moves, turn);
-    }
-
-    public String gameStatus() {
-        List<Move> moves = getAllLegalMoves();
-        if (moves.isEmpty()) {
-            String winner = "white".equals(turn) ? "Black" : "White";
-            return RuleChecker.isInCheck(this, turn) ? winner + " wins by checkmate" : "Draw by stalemate";
-        }
-        return "ongoing";
+        turn = (turn == Piece.WHITE) ? Piece.BLACK : Piece.WHITE;
     }
 }

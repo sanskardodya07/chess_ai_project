@@ -12,7 +12,11 @@ class ChessBoard extends StatelessWidget {
   final List<Move> legalMoves;
   final Move? lastMove;
   final bool isFlipped;
-  final BoardSnapshot? snapshot; // non-null = view-only mode
+  final BoardSnapshot? snapshot; 
+  
+  // NEW: Theme colors
+  final Color lightSquareColor;
+  final Color darkSquareColor;
 
   const ChessBoard({
     super.key,
@@ -24,6 +28,8 @@ class ChessBoard extends StatelessWidget {
     required this.lastMove,
     this.isFlipped = false,
     this.snapshot,
+    this.lightSquareColor = const Color(0xFFEEEED2), // Default Cream
+    this.darkSquareColor = const Color(0xFF769656),  // Default Green
   });
 
   bool get _viewMode => snapshot != null;
@@ -62,13 +68,9 @@ class ChessBoard extends StatelessWidget {
     return false;
   }
 
-  Color _base(int r, int c) => (r + c) % 2 == 0
-      ? const Color(0xFFEEEED2)
-      : const Color(0xFF769656);
-
-  Color _labelColor(int r, int c) => (r + c) % 2 == 0
-      ? const Color(0xFF769656)
-      : const Color(0xFFEEEED2);
+  // UPDATED: Use the passed in theme colors
+  Color _base(int r, int c) => (r + c) % 2 == 0 ? lightSquareColor : darkSquareColor;
+  Color _labelColor(int r, int c) => (r + c) % 2 == 0 ? darkSquareColor : lightSquareColor;
 
   Color _squareColor(int r, int c) {
     if (_isInCheck(r, c))   return Colors.redAccent.withValues(alpha: 0.85);
@@ -77,8 +79,7 @@ class ChessBoard extends StatelessWidget {
     return _base(r, c);
   }
 
-  String _rankLabel(int dr) =>
-      (isFlipped ? dr + 1 : 8 - dr).toString();
+  String _rankLabel(int dr) => (isFlipped ? dr + 1 : 8 - dr).toString();
 
   String _fileLabel(int dc) {
     final fi = isFlipped ? 7 - dc : dc;
@@ -111,7 +112,6 @@ class ChessBoard extends StatelessWidget {
               color: _squareColor(r, c),
               child: Stack(
                 children: [
-                  // Piece
                   if (hasPiece)
                     Padding(
                       padding: const EdgeInsets.all(3),
@@ -121,7 +121,6 @@ class ChessBoard extends StatelessWidget {
                       ),
                     ),
 
-                  // Legal move dot (empty squares)
                   if (isLegal && !hasPiece)
                     Center(
                       child: Container(
@@ -134,7 +133,6 @@ class ChessBoard extends StatelessWidget {
                       ),
                     ),
 
-                  // Legal capture ring (occupied squares)
                   if (isLegal && hasPiece)
                     Container(
                       decoration: BoxDecoration(
@@ -145,7 +143,6 @@ class ChessBoard extends StatelessWidget {
                       ),
                     ),
 
-                  // Rank label (left column)
                   if (dc == 0)
                     Positioned(
                       top: 2, left: 2,
@@ -159,7 +156,6 @@ class ChessBoard extends StatelessWidget {
                       ),
                     ),
 
-                  // File label (bottom row)
                   if (dr == 7)
                     Positioned(
                       bottom: 2, right: 2,

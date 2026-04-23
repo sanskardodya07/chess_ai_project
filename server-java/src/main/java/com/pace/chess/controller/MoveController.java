@@ -3,6 +3,7 @@ package com.pace.chess.controller;
 import com.pace.chess.engine.AlphaBeta;
 import com.pace.chess.model.Board;
 import com.pace.chess.model.Move;
+import com.pace.chess.model.Piece;
 import com.pace.chess.service.BoardDeserializer;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -36,14 +37,24 @@ public class MoveController {
         Board board = BoardDeserializer.fromJson(boardData);
 
         try {
+             // --- START TIMER ---
+            long startTime = System.currentTimeMillis();
+
             Move move = executor.submit(() -> AlphaBeta.getBestMove(board, depth))
                                 .get(10000, TimeUnit.SECONDS);
+
+            // --- STOP TIMER ---
+            long duration = System.currentTimeMillis() - startTime;
 
             if (move == null)
                 return ResponseEntity.internalServerError().body(Map.of("error", "No legal moves"));
 
+            // Print the calculation time clearly in the logs
+            log.info("[" + time + "] Engine Took: " + duration + "ms");
+
             Map<String, Object> result = serializeMove(move);
-            addLog(time, turn, depth, "ok", move.pieceMoved + " → (" + move.endRow + "," + move.endCol + ")");
+            // Updated to use the 1D to 2D math for logging
+            addLog(time, turn, depth, "ok", pieceIntToString(move.pieceMoved) + " → (" + (move.endSquare / 16) + "," + (move.endSquare % 16) + ")");
             return ResponseEntity.ok(Map.of("move", result));
 
         } catch (TimeoutException e) {
@@ -65,13 +76,17 @@ public class MoveController {
 
     private Map<String, Object> serializeMove(Move m) {
         Map<String, Object> r = new LinkedHashMap<>();
-        r.put("startRow",      m.startRow);
-        r.put("startCol",      m.startCol);
-        r.put("endRow",        m.endRow);
-        r.put("endCol",        m.endCol);
-        r.put("pieceMoved",    m.pieceMoved);
-        r.put("pieceCaptured", m.pieceCaptured);
-        r.put("promotion",     m.promotion);
+        // Translate 0x88 index back to Row/Col
+        r.put("startRow",      m.startSquare / 16);
+        r.put("startCol",      m.startSquare % 16);
+        r.put("endRow",        m.endSquare / 16);
+        r.put("endCol",        m.endSquare % 16);
+        
+        // Translate piece integers back to Strings for the frontend
+        r.put("pieceMoved",    pieceIntToString(m.pieceMoved));
+        r.put("pieceCaptured", m.pieceCaptured != Piece.EMPTY ? pieceIntToString(m.pieceCaptured) : "");
+        r.put("promotion",     m.promotion != Piece.EMPTY ? promoIntToString(m.promotion) : null);
+        
         r.put("isEnPassant",   m.isEnPassant);
         r.put("isCastling",    m.isCastling);
         return r;
@@ -88,4 +103,31 @@ public class MoveController {
     }
 
     public static List<Map<String, Object>> getRequestLog() { return requestLog; }
+
+    // --- Helper Methods to translate Integers back to JSON Strings ---
+
+    private String pieceIntToString(int piece) {
+        if (piece == Piece.EMPTY) return "";
+        String color = (piece & Piece.WHITE) != 0 ? "w" : "b";
+        String type = switch (piece & 7) {
+            case Piece.PAWN -> "P";
+            case Piece.KNIGHT -> "N";
+            case Piece.BISHOP -> "B";
+            case Piece.ROOK -> "R";
+            case Piece.QUEEN -> "Q";
+            case Piece.KING -> "K";
+            default -> "";
+        };
+        return color + type;
+    }
+
+    private String promoIntToString(int promo) {
+        return switch (promo & 7) {
+            case Piece.QUEEN -> "Q";
+            case Piece.ROOK -> "R";
+            case Piece.BISHOP -> "B";
+            case Piece.KNIGHT -> "N";
+            default -> null;
+        };
+    }
 }

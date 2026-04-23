@@ -8,7 +8,7 @@ class AIService {
   // ✅ No trailing slash
   static const String baseUrl = "https://pace-server.onrender.com";
 
-  static Future<Move?> getBestMove(Board board) async {
+  static Future<Move?> getBestMove(Board board, int depth) async {
     try {
       final url = Uri.parse("$baseUrl/api/move");
 
@@ -17,7 +17,7 @@ class AIService {
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "board": board.toJson(),
-          "depth": 4,
+          "depth": depth,
         }),
       );
 

@@ -116,10 +116,10 @@ public class ChessCLI {
         StringBuilder sb = new StringBuilder();
         sb.append("{");
         
-        // 1. Root level 'depth'
-        sb.append("\"depth\": 3,");
+        // 1. Root level 'depth' (Matching Flutter's depth: 4, or keep 3 for testing)
+        sb.append("\"depth\": 6,");
 
-        // 2. The 'board' key containing the object (matching Flutter's board.toJson())
+        // 2. The 'board' key containing the object
         sb.append("\"board\": {");
         
         // Internal board array
@@ -136,13 +136,17 @@ public class ChessCLI {
         // Turn metadata
         sb.append("\"turn\": \"").append(currentTurn).append("\",");
 
-        // King positions as ARRAYS (to satisfy your server's BoardDeserializer)
+        // King positions
         sb.append("\"whiteKing\": [").append(whiteKingPos[0]).append(",").append(whiteKingPos[1]).append("],");
-        sb.append("\"blackKing\": [").append(blackKingPos[0]).append(",").append(blackKingPos[1]).append("]");
+        sb.append("\"blackKing\": [").append(blackKingPos[0]).append(",").append(blackKingPos[1]).append("],");
+
+        // FIX: Add the missing fields that Flutter's board.toJson() would normally send
+        sb.append("\"castlingRights\": {\"wK\":true, \"wQ\":true, \"bK\":true, \"bQ\":true},");
+        sb.append("\"enPassantTarget\": null");
 
         sb.append("}"); // Close "board" object
-        
         sb.append("}"); // Close root object
+        
         return sb.toString();
     }
 

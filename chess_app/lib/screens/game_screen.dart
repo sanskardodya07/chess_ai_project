@@ -21,6 +21,20 @@ import '../api/auth_service.dart';
 import '../screens/auth_screen.dart';
 import '../screens/leaderboard_screen.dart';
 
+class BoardTheme {
+  final String name;
+  final Color light;
+  final Color dark;
+  const BoardTheme(this.name, this.light, this.dark);
+}
+
+const List<BoardTheme> _themes = [
+  BoardTheme("Classic", Color(0xFFEEEED2), Color(0xFF769656)), // Chess.com Green
+  BoardTheme("Walnut",  Color(0xFFEADDCA), Color(0xFFB58863)), // Lichess Brown
+  BoardTheme("Ocean",   Color(0xFFDFE3E8), Color(0xFF7B9EBD)), // Cool Blue
+  BoardTheme("Dusk",    Color(0xFFCCCED4), Color(0xFF767F8B)), // Dark Grey
+];
+
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
 
@@ -29,10 +43,14 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-
   bool _showAuthOverlay = false;
+  bool _showGameOverOverlay = false; // Controls the delayed popup
   int  _pendingMargin   = 0;
   String _pendingResult = "";
+
+  // ── Difficulty Level & Theme ──────────────────────────
+  int _selectedDepth = 4; // Default Intermediate
+  int _themeIndex    = 0; // Default Classic Green
 
   // ── Game ────────────────────────────────────────────
   Board  board    = Board();
@@ -198,15 +216,36 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   // ── AI ────────────────────────────────────────────────
+  void _resetGame() {
+    setState(() {
+      board             = Board();
+      selectedRow       = null;
+      selectedCol       = null;
+      currentLegalMoves = [];
+      gameOver          = false;
+      _showGameOverOverlay = false; // Reset the overlay
+      statusMessage     = "";
+      snapshots         = [];
+      viewingIndex      = null;
+      aiThinking        = false;
+      colorChosen       = false;
+      playerColor       = "white";
+      aiColor           = "black";
+    });
+  }
+
   Future<void> _maybeTriggerAI() async {
     if (gameOver || board.turn != aiColor) return;
 
     setState(() {
       aiThinking    = true;
-      statusMessage = "AI is thinking";
+      statusMessage = "AI is thinking...";
     });
 
-    final move = await AIService.getBestMove(board);
+    // Pass the selected depth here!
+    final move = await AIService.getBestMove(board, _selectedDepth);
+
+    // ... (rest of the method remains the same)
 
     if (!mounted) return;
 
@@ -277,24 +316,29 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _onGameOver(GameState state) {
-    // Compute material margin
     final (byPlayer, byAI, pMat, aMat) = _computeCaptures();
     final margin = pMat - aMat;
 
     String result = "draw";
     if (state == GameState.checkmate) {
-      // The side that just moved delivered checkmate
-      // board.turn has already flipped, so the loser is board.turn
       result = board.turn == aiColor ? "win" : "loss";
     }
 
     _pendingMargin  = max(margin, 0);
     _pendingResult  = result;
 
-    // Submit immediately if logged in
     if (AuthService.currentUser != null) {
       _submitScore();
     }
+
+    // Delay the popup by 2 seconds so the user can look at the board
+    Future.delayed(const Duration(milliseconds: 2000), () {
+      if (mounted) {
+        setState(() {
+          _showGameOverOverlay = true;
+        });
+      }
+    });
   }
 
   Future<void> _submitScore() async {
@@ -316,6 +360,44 @@ class _GameScreenState extends State<GameScreen> {
         ),
       );
     }
+  }
+
+  void _confirmResign() {
+    if (aiThinking || gameOver || !colorChosen) return;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF242424),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text("Resign?", style: TextStyle(color: Colors.white)),
+        content: const Text("Are you sure you want to forfeit this match?", style: TextStyle(color: Colors.white60)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                gameOver = true;
+                statusMessage = "${playerColor == 'white' ? 'White' : 'Black'} resigned";
+                _pendingResult = "loss";
+                _pendingMargin = 0;
+              });
+              
+              if (AuthService.currentUser != null) _submitScore();
+
+              // Delay popup
+              Future.delayed(const Duration(milliseconds: 1500), () {
+                if (mounted) setState(() => _showGameOverOverlay = true);
+              });
+            },
+            child: const Text("Resign", style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
   }
 
   // ── Reset ────────────────────────────────────────────
@@ -350,23 +432,6 @@ class _GameScreenState extends State<GameScreen> {
         ],
       ),
     );
-  }
-
-  void _resetGame() {
-    setState(() {
-      board             = Board();
-      selectedRow       = null;
-      selectedCol       = null;
-      currentLegalMoves = [];
-      gameOver          = false;
-      statusMessage     = "";
-      snapshots         = [];
-      viewingIndex      = null;
-      aiThinking        = false;
-      colorChosen       = false;
-      playerColor       = "white";
-      aiColor           = "black";
-    });
   }
 
   // ── Undo ─────────────────────────────────────────────
@@ -439,8 +504,9 @@ class _GameScreenState extends State<GameScreen> {
       body: Stack(
         children: [
           isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
-          if (!colorChosen)                  _buildColorPickerOverlay(),
-          if (gameOver && colorChosen)       _buildGameOverOverlay(),
+          if (!colorChosen) _buildColorPickerOverlay(),
+          // Use the new delayed variable here!
+          if (_showGameOverOverlay && colorChosen) _buildGameOverOverlay(), 
           if (_showAuthOverlay && !gameOver) _fullScreenAuth(),
         ],
       ),
@@ -501,14 +567,14 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   // ── Desktop layout ────────────────────────────────────
+  // ── Desktop layout ────────────────────────────────────
   Widget _buildDesktopLayout() {
     final (byPlayer, byAI, pMat, aMat) = _computeCaptures();
 
     return Row(
       children: [
-        // Board column
+        // Board column gets ALL the remaining space
         Expanded(
-          flex: 3,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -528,9 +594,9 @@ class _GameScreenState extends State<GameScreen> {
             ),
           ),
         ),
-        // Sidebar
-        Expanded(
-          flex: 2,
+        // Sidebar is now a fixed width so it wraps text tightly
+        SizedBox(
+          width: 340, // Industry standard sidebar width
           child: Padding(
             padding: const EdgeInsets.only(top: 16, right: 16, bottom: 16),
             child: Column(
@@ -557,6 +623,8 @@ class _GameScreenState extends State<GameScreen> {
 
   // ── Board widget ──────────────────────────────────────
   Widget _buildBoardWidget() {
+    final theme = _themes[_themeIndex]; // Get active theme
+    
     return Container(
       decoration: BoxDecoration(
         boxShadow: [
@@ -576,6 +644,8 @@ class _GameScreenState extends State<GameScreen> {
         lastMove:     board.lastMove,
         isFlipped:    playerColor == "black",
         snapshot:     _activeSnapshot,
+        lightSquareColor: theme.light, // Pass light color
+        darkSquareColor:  theme.dark,  // Pass dark color
       ),
     );
   }
@@ -621,32 +691,41 @@ class _GameScreenState extends State<GameScreen> {
 
   // ── Controls ──────────────────────────────────────────
   Widget _buildControls() {
+    final currentThemeName = _themes[_themeIndex].name;
+    
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 8.0,    // Horizontal space between buttons
+        runSpacing: 8.0, // Vertical space if they wrap to a second line
         children: [
           _ctrlBtn(
             icon:    Icons.undo_rounded,
             onTap:   board.moveHistory.isEmpty || aiThinking ? null : _undoMove,
             tooltip: "Undo",
           ),
-          const SizedBox(width: 8),
           _ctrlBtn(
             icon:    Icons.refresh_rounded,
             onTap:   _confirmReset,
             tooltip: "New Game",
           ),
-          const SizedBox(width: 8),
+          _ctrlBtn(
+            icon:    Icons.flag_rounded,
+            onTap:   (gameOver || aiThinking || !colorChosen) ? null : _confirmResign,
+            tooltip: "Resign",
+          ),
+          _ctrlBtn(
+            icon:    Icons.palette_rounded,
+            onTap:   () => setState(() => _themeIndex = (_themeIndex + 1) % _themes.length),
+            tooltip: "Theme: $currentThemeName",
+          ),
           _ctrlBtn(
             icon:    Icons.leaderboard_rounded,
-            onTap:   () => Navigator.push(context,
-                MaterialPageRoute(
-                    builder: (_) => const LeaderboardScreen())),
+            onTap:   () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaderboardScreen())),
             tooltip: "Leaderboard",
           ),
-          if (AuthService.currentUser != null) ...[
-            const SizedBox(width: 8),
+          if (AuthService.currentUser != null) 
             _ctrlBtn(
               icon:    Icons.logout_rounded,
               onTap:   () async {
@@ -654,24 +733,20 @@ class _GameScreenState extends State<GameScreen> {
                 setState(() {});
               },
               tooltip: "Sign Out",
-            ),
-          ] else ...[
-            const SizedBox(width: 8),
+            )
+          else 
             _ctrlBtn(
               icon:    Icons.person_outline_rounded,
               onTap:   () => setState(() => _showAuthOverlay = true),
               tooltip: "Sign In",
             ),
-          ],
-          if (viewingIndex != null) ...[
-            const SizedBox(width: 8),
+          if (viewingIndex != null) 
             _ctrlBtn(
               icon:        Icons.skip_next_rounded,
               onTap:       () => setState(() => viewingIndex = null),
               tooltip:     "Back to current",
               highlighted: true,
             ),
-          ],
         ],
       ),
     );
@@ -750,14 +825,24 @@ class _GameScreenState extends State<GameScreen> {
                 ),
               ),
               const SizedBox(height: 6),
+              // ... existing text ...
               Text(
-                "Would you like to choose White or Black?",
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 13,
-                ),
+                "Select difficulty and choose your side.",
+                style: TextStyle(color: Colors.grey[500], fontSize: 13),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 24),
+              
+              // Difficulty Selector
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _difficultyBtn("Beginner", 3),
+                  _difficultyBtn("Medium", 4),
+                  _difficultyBtn("Advance", 5),
+                ],
+              ),
+              const SizedBox(height: 24),
+
               _colorBtn(
                 label: "Play as White",
                 icon:  "♔",
@@ -775,6 +860,32 @@ class _GameScreenState extends State<GameScreen> {
                 border: Border.all(color: Colors.white24),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _difficultyBtn(String label, int depth) {
+    final isSelected = _selectedDepth == depth;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedDepth = depth),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF4A90D9) : const Color(0xFF2A2A2A),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF4A90D9) : Colors.white24,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.grey[400],
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
       ),

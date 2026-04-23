@@ -6,8 +6,8 @@ com\pace\chess\controller\AuthController.class
 com\pace\chess\service\RedisService.class
 com\pace\chess\controller\DashboardController.class
 com\pace\chess\engine\MoveGenerator.class
+com\pace\chess\model\Piece.class
 com\pace\chess\engine\AlphaBeta.class
-com\pace\chess\engine\MoveSorter$1.class
 com\pace\chess\service\AuthService.class
 com\pace\chess\service\BoardDeserializer.class
 com\pace\chess\PaceApplication.class
