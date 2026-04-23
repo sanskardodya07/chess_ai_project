@@ -5,6 +5,8 @@ import com.pace.chess.model.Board;
 import com.pace.chess.model.Move;
 import com.pace.chess.model.Piece;
 import com.pace.chess.service.BoardDeserializer;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,12 +19,14 @@ import java.util.logging.Logger;
 @RestController
 public class MoveController {
 
+    @Autowired private com.pace.chess.service.RedisService redis;
+    @Autowired private com.fasterxml.jackson.databind.ObjectMapper mapper;
+
     private static final Logger log = Logger.getLogger("PACE");
     private static final ExecutorService executor = Executors.newCachedThreadPool();
 
     // In-memory request log (persists across requests - unlike serverless)
     private static final List<Map<String, Object>> requestLog = Collections.synchronizedList(new ArrayList<>());
-    private static final int MAX_LOG = 20;
 
     @PostMapping("/api/move")
     public ResponseEntity<?> getMove(@RequestBody Map<String, Object> body) {
@@ -93,12 +97,16 @@ public class MoveController {
     }
 
     private void addLog(String time, String turn, int depth, String status, String move) {
-        synchronized (requestLog) {
-            requestLog.add(0, Map.of(
+        try {
+            Map<String, Object> logEntry = Map.of(
                 "time", time, "turn", turn, "depth", depth,
                 "status", status, "move", move != null ? move : "—"
-            ));
-            if (requestLog.size() > MAX_LOG) requestLog.remove(requestLog.size() - 1);
+            );
+            // Convert to JSON and push to Redis async so it doesn't block the HTTP response
+            String json = mapper.writeValueAsString(logEntry);
+            executor.submit(() -> redis.pushLog(json)); 
+        } catch (Exception e) {
+            log.warning("Failed to write log to Redis: " + e.getMessage());
         }
     }
 

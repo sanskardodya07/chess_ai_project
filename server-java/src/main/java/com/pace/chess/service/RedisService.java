@@ -71,4 +71,18 @@ public class RedisService {
             p.sync();
         }
     }
+
+    // Add to RedisService.java
+    public void pushLog(String jsonLog) {
+        try (var jedis = pool.getResource()) { // Use your existing Jedis connection method
+            jedis.lpush("server_logs", jsonLog);
+            jedis.ltrim("server_logs", 0, 499); // Strictly caps the list at 500 items
+        }
+    }
+
+    public List<String> getRecentLogs() {
+        try (var jedis = pool.getResource()) {
+            return jedis.lrange("server_logs", 0, 499);
+        }
+    }
 }
