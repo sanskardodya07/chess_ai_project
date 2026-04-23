@@ -10,29 +10,23 @@
   <title>PACE — Portable Application Chess Engine</title>
   <meta name="description" content="PACE is a Procedural-AI based Chess Engine. Play chess against an AI opponent, anywhere.">
 
-  <!-- Theme -->
   <meta name="theme-color" content="#111111">
 
-  <!-- PWA manifest -->
   <link rel="manifest" href="manifest.json">
 
-  <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png">
 
-  <!-- iOS PWA -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="PACE">
   <link rel="apple-touch-icon" href="icons/Icon-maskable-512.png">
 
-  <!-- Open Graph -->
   <meta property="og:title"       content="PACE — Portable Application Chess Engine">
   <meta property="og:description" content="Play chess against a Procedural-AI engine, anywhere.">
   <meta property="og:image"       content="icons/Icon-512.png">
   <meta property="og:type"        content="website">
   <meta name="twitter:card"       content="summary">
 
-  <!-- No white flash on load -->
   <style>
     html, body { background-color: #1A1A1A; margin: 0; padding: 0; height: 100%; }
   </style>
@@ -50,7 +44,7 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   ">
     <img src="icons/Icon-192.png" width="72" height="72"
-         style="border-radius: 18px; opacity: 0.95;">
+         style="border-radius: 18px; opacity: 0.95;" alt="Logo">
     <div style="color: #fff; font-size: 18px; font-weight: 600; letter-spacing: 2px;">
       PACE
     </div>
@@ -96,11 +90,8 @@
       if (label) status.textContent = label;
     }
 
-    // Stage 1 — page parsed, JS starting to download
     setProgress(10, 'Loading engine...');
 
-    // Stage 2 — crawl to 40% while main.dart.js downloads
-    // Uses PerformanceObserver to detect when main script finishes
     let crawlTimer = setInterval(() => {
       if (current < 38) setProgress(current + 2, 'Loading engine...');
     }, 300);
@@ -112,26 +103,11 @@
             clearInterval(crawlTimer);
             setProgress(45, 'Starting app...');
           }
-          if (entry.name.includes('flutter_bootstrap')) {
-            setProgress(20, 'Loading engine...');
-          }
         }
       });
       observer.observe({ type: 'resource', buffered: true });
     } catch (_) {}
 
-    // Stage 3 — flutter engine initializing (55 → 85)
-    // Fires when flutter_bootstrap.js runs
-    window._onFlutterEngineInit = function() {
-      clearInterval(crawlTimer);
-      setProgress(55, 'Starting app...');
-      let engineTimer = setInterval(() => {
-        if (current < 83) setProgress(current + 3, 'Starting app...');
-        else clearInterval(engineTimer);
-      }, 200);
-    };
-
-    // Stage 4 — first frame rendered
     window.addEventListener('flutter-first-frame', () => {
       setProgress(100, 'Ready');
       setTimeout(() => {
@@ -142,24 +118,8 @@
         }
       }, 150);
     });
-  </script>
 
-  <script src="flutter_bootstrap.js" async></script>
-  <script>
-    window.addEventListener('flutter-first-frame', () => {
-      const s = document.getElementById('loading-screen');
-      if (s) {
-        s.style.transition = 'opacity 0.4s ease';
-        s.style.opacity = '0';
-        setTimeout(() => s.remove(), 400);
-      }
-    });
-  </script>
-  <script src="flutter_bootstrap.js" async></script>
-
-  <script>
     let deferredPrompt = null;
-
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
@@ -189,15 +149,9 @@
       b.style.opacity   = '0';
       localStorage.setItem('pwa-dismissed', Date.now());
     }
-
-    window.addEventListener('load', () => {
-      const dismissed = localStorage.getItem('pwa-dismissed');
-      if (dismissed && Date.now() - Number(dismissed) < 7 * 24 * 60 * 60 * 1000) {
-        const b = document.getElementById('pwa-banner');
-        if (b) b.remove();
-      }
-    });
   </script>
+
+  <script src="flutter_bootstrap.js" async></script>
 
   <div id="pwa-banner" style="
     position: fixed;
@@ -255,6 +209,5 @@
       ">Install App</button>
     </div>
   </div>
-
 </body>
 </html>

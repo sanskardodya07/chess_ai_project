@@ -23,7 +23,7 @@ jobs:
 
       - name: Build web
         working-directory: chess_app
-        run: flutter build web --release --pwa-strategy=offline-first
+        run: flutter build web --release --wasm -O3 --pwa-strategy=none
 
       - name: Copy vercel config into build output
         run: cp chess_app/vercel.json chess_app/build/web/vercel.json

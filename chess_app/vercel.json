@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "cleanUrls": true,
   "headers": [
     {
       "source": "/(.*)\\.wasm",
@@ -7,6 +8,15 @@
         {
           "key": "Content-Type",
           "value": "application/wasm"
+        }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
         }
       ]
     }
@@ -21,10 +31,6 @@
       "src": "/manifest.json",
       "headers": { "Cache-Control": "no-cache" },
       "dest": "/manifest.json"
-    },
-    {
-      "src": "/(.+\\.json)",
-      "dest": "/$1"
     },
     {
       "src": "/(.*\\.(?:js|wasm|css|png|jpg|ico|svg|ttf|otf))",
